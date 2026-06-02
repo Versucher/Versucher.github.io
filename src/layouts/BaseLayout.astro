@@ -1,0 +1,36 @@
+---
+import Sidebar from '../components/Sidebar.astro';
+import '../styles/global.css'; // <- 新增這一行，載入 Tailwind v4
+const { title = "Digital Garden" } = Astro.props;
+---
+
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 font-mono selection:bg-emerald-500 selection:text-black">
+    <div class="block md:table w-full h-screen">
+      <div class="block md:table-row">
+        <div class="block md:table-cell w-full md:w-64 vertical-align-top border-b md:border-b-0 md:border-r border-zinc-800 bg-zinc-900/50 backdrop-blur-md">
+          <Sidebar />
+        </div>
+        
+        <div class="block md:table-cell vertical-align-top p-6 md:p-12 overflow-y-auto">
+          <main class="max-w-4xl mx-auto space-y-8 animate-fade-in">
+            <slot /> </main>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  /* 簡單精緻的滾動條極客優化 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #09090b; }
+  ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+</style>
