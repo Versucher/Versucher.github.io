@@ -1,34 +1,40 @@
 ---
 import Sidebar from '../components/Sidebar.astro';
-import '../styles/global.css'; // <- 新增這一行，載入 Tailwind v4
-const { title = "Digital Garden" } = Astro.props;
+import '../styles/global.css';
+
+const {
+  title = 'Mystery_HUB',
+  description = 'A compact digital workspace for notes, tools, and AI experiments.',
+} = Astro.props;
 ---
 
-<html lang="zh-TW">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
     <title>{title}</title>
   </head>
   <body class="bg-zinc-950 text-zinc-100 font-mono selection:bg-emerald-500 selection:text-black">
-    <div class="block md:table w-full h-screen">
-      <div class="block md:table-row">
-        <div class="block md:table-cell w-full md:w-64 vertical-align-top border-b md:border-b-0 md:border-r border-zinc-800 bg-zinc-900/50 backdrop-blur-md">
+    <div class="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_34%),linear-gradient(180deg,rgba(39,39,42,0.18),transparent_26%)]">
+      <div class="mx-auto grid min-h-screen w-full max-w-7xl md:grid-cols-[17rem_1fr]">
+        <aside class="border-b border-zinc-800 bg-zinc-950/85 backdrop-blur md:border-b-0 md:border-r">
           <Sidebar />
-        </div>
-        
-        <div class="block md:table-cell vertical-align-top p-6 md:p-12 overflow-y-auto">
-          <main class="max-w-4xl mx-auto space-y-8 animate-fade-in">
-            <slot /> </main>
-        </div>
+        </aside>
+
+        <main class="w-full px-5 py-6 sm:px-8 md:px-12 md:py-10">
+          <div class="mx-auto max-w-5xl space-y-8">
+            <slot />
+          </div>
+        </main>
       </div>
     </div>
   </body>
 </html>
 
 <style is:global>
-  /* 簡單精緻的滾動條極客優化 */
+  /* 页面滚动条样式。 */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: #09090b; }
   ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }

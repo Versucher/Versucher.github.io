@@ -4,11 +4,10 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   // 替換成你的實際 GitHub Pages 網址
-  site: 'https://versucher.github.io', 
+  site: 'https://www.shimazu.ndjp.net',
   vite: {
     plugins: [tailwindcss()],
   },
 });
-
 
 

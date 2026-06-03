@@ -1,43 +1,59 @@
-# Astro Starter Kit: Minimal
+# Mystery_HUB
+
+Personal GitHub Pages site built with Astro and Tailwind CSS.
+
+## Local Development
 
 ```sh
-npm create astro@latest -- --template minimal
+npm install
+npm.cmd run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+On Windows PowerShell, `npm.cmd` avoids local execution-policy issues with `npm.ps1`.
 
-## 🚀 Project Structure
+## Production Check
 
-Inside of your Astro project, you'll see the following folders and files:
+```sh
+npm.cmd run build
+npm.cmd run preview -- --host 127.0.0.1
+```
+
+The static output is generated in `dist/`.
+
+## Blog Posts
+
+Markdown posts live in `src/pages/blog/`.
+
+Create a new file such as:
 
 ```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+src/pages/blog/my-note.md
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Use this frontmatter:
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```md
+---
+layout: ../../layouts/BlogPostLayout.astro
+title: "My Note"
+description: "Short summary shown on the Blog page."
+date: "2026-06-03"
+tags:
+  - astro
+  - notes
+---
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+After pushing the Markdown file, Astro generates the article route during the GitHub Pages build. For example, `src/pages/blog/hello-astro.md` becomes `/blog/hello-astro/`.
 
-## 🧞 Commands
+## Deployment
 
-All commands are run from the root of the project, from a terminal:
+Deployment is handled by `.github/workflows/deploy.yml` using the Astro GitHub Action and GitHub Pages.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+The site uses the custom domain in `public/CNAME`:
 
-## 👀 Want to learn more?
+```text
+www.shimazu.ndjp.net
+```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Keep `public/CNAME` in the repository so the generated Pages artifact includes the custom domain file.

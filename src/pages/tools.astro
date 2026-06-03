@@ -1,16 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const tools = [
+  ['JSON formatter', 'Format and inspect JSON locally in the browser.'],
+  ['Regex tester', 'Test patterns with immediate front-end feedback.'],
+  ['Snippet vault', 'Keep reusable commands and code fragments close to the workspace.'],
+  ['Link checker', 'Track important site links before shipping changes.'],
+];
 ---
+
 <BaseLayout title="0x03 // Tools">
-  <h2 class="text-2xl font-bold text-emerald-400 border-b border-zinc-800 pb-2">&gt;_ tools</h2>
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-    <div class="border border-zinc-800 p-4 rounded bg-zinc-900/20">
-      <div class="text-zinc-200 font-bold text-sm">Fro JSON</div>
-      <p class="text-xs text-zinc-500 mt-1">Local caching processing, never uploaded to the server.</p>
-    </div>
-    <div class="border border-zinc-800 p-4 rounded bg-zinc-900/20">
-      <div class="text-zinc-200 font-bold text-sm">Regex test</div>
-      <p class="text-xs text-zinc-500 mt-1">Front-end real-time matching, instantaneous feedback.</p>
-    </div>
+  <header class="border-b border-zinc-800 pb-4">
+    <div class="text-xs text-emerald-400">// LOCAL_UTILITIES</div>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">&gt;_ Tools</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      A place for small utilities that should run client-side without uploading data.
+    </p>
+  </header>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    {tools.map(([title, body]) => (
+      <div class="rounded border border-zinc-800 bg-zinc-900/25 p-5">
+        <div class="text-sm font-bold text-zinc-200">{title}</div>
+        <p class="mt-2 text-xs leading-5 text-zinc-500">{body}</p>
+        <div class="mt-4 text-[10px] uppercase tracking-wide text-emerald-500/80">coming soon</div>
+      </div>
+    ))}
   </div>
 </BaseLayout>

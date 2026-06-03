@@ -1,14 +1,68 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const focusItems = [
+  ['Notes', 'Write down technical notes, experiments, and ideas worth revisiting.'],
+  ['Tools', 'Keep small browser-native utilities close at hand.'],
+  ['AI Apps', 'Track practical AI workflows and interface experiments.'],
+];
+
+const signalItems = [
+  ['STACK', 'Astro / Tailwind CSS'],
+  ['MODE', 'Static site'],
+  ['DOMAIN', 'www.shimazu.ndjp.net'],
+];
 ---
+
 <BaseLayout title="Dashboard // Home">
-  <section class="border border-zinc-800 bg-zinc-900/30 p-6 rounded-lg backdrop-blur-sm shadow-2xl">
-    <div class="text-xs text-emerald-500 mb-2">// INITIALIZING_TERMINAL...</div>
-    <h2 class="text-3xl font-extrabold text-zinc-100 tracking-tight mb-4">Welcome to my space</h2>
-    <p class="text-zinc-400 leading-relaxed text-sm">
-      Test page base on Astro
-    </p>
+  <section class="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 shadow-2xl shadow-black/30">
+    <div class="flex items-center gap-2 border-b border-zinc-800 bg-zinc-950/80 px-4 py-3">
+      <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+      <span class="ml-2 text-xs text-zinc-500">/home/mystery_hub</span>
+    </div>
+
+    <div class="grid gap-8 p-6 md:grid-cols-[1.5fr_1fr] md:p-8">
+      <div>
+        <div class="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-400">// Dashboard online</div>
+        <h2 class="text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl">
+          A focused space for notes, tools, and AI experiments.
+        </h2>
+        <p class="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">
+          This site is being shaped into a compact personal hub: clear enough to browse,
+          light enough to maintain, and ready for small utilities or research notes as they grow.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="/blog" class="rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300 transition hover:bg-emerald-500/20">
+            Read notes
+          </a>
+          <a href="/tools" class="rounded border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900">
+            Open tools
+          </a>
+        </div>
+      </div>
+
+      <div class="rounded border border-zinc-800 bg-zinc-950/70 p-4">
+        <div class="mb-4 text-xs text-zinc-500">SYSTEM_SIGNAL</div>
+        <div class="space-y-3">
+          {signalItems.map(([label, value]) => (
+            <div class="flex items-start justify-between gap-4 border-b border-zinc-900 pb-3 last:border-0 last:pb-0">
+              <span class="text-xs text-zinc-600">{label}</span>
+              <span class="text-right text-xs text-zinc-300">{value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-4 md:grid-cols-3">
+    {focusItems.map(([title, body]) => (
+      <a href={title === 'Notes' ? '/blog' : title === 'Tools' ? '/tools' : '/ai'} class="rounded border border-zinc-800 bg-zinc-900/25 p-5 transition hover:border-emerald-500/60 hover:bg-zinc-900/50">
+        <div class="mb-3 text-xs text-emerald-400">&gt; {title}</div>
+        <p class="text-sm leading-6 text-zinc-400">{body}</p>
+      </a>
+    ))}
   </section>
 </BaseLayout>
-
-

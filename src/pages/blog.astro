@@ -1,7 +1,56 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+// 从 blog 目录读取 Markdown，推送新文件后会在构建时自动生成文章。
+const posts = (await Astro.glob('./blog/*.md'))
+  .map((post) => ({
+    title: post.frontmatter.title,
+    description: post.frontmatter.description,
+    date: post.frontmatter.date,
+    tags: post.frontmatter.tags ?? [],
+    url: post.url,
+  }))
+  .sort((a, b) => new Date(b.date).valueOf() - new Date(a.date).valueOf());
+
+const formatDate = (date) =>
+  new Intl.DateTimeFormat('en', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  }).format(new Date(date));
 ---
+
 <BaseLayout title="0x02 // Blog">
-  <h2 class="text-2xl font-bold text-emerald-400 border-b border-zinc-800 pb-2">&gt;_ Articles</h2>
-  <div class="py-4 text-zinc-500 text-sm">blogs in building</div>
+  <header class="border-b border-zinc-800 pb-4">
+    <div class="text-xs text-emerald-400">// WRITING_BUFFER</div>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">&gt;_ Articles</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Notes, build logs, and reusable workflow records generated from Markdown files.
+    </p>
+  </header>
+
+  <div class="grid gap-4">
+    {posts.length > 0 ? (
+      posts.map((post) => (
+        <article class="rounded border border-zinc-800 bg-zinc-900/25 p-5 transition hover:border-emerald-500/50 hover:bg-zinc-900/45">
+          <a href={post.url} class="block">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-base font-bold text-zinc-100">{post.title}</h3>
+              <time datetime={post.date} class="text-xs text-zinc-500">{formatDate(post.date)}</time>
+            </div>
+            <p class="mt-3 text-sm leading-6 text-zinc-400">{post.description}</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
+                <span class="rounded border border-zinc-800 px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-500">{tag}</span>
+              ))}
+            </div>
+          </a>
+        </article>
+      ))
+    ) : (
+      <div class="rounded border border-zinc-800 bg-zinc-900/25 p-5 text-sm text-zinc-500">
+        No articles yet. Add a Markdown file under <code>src/pages/blog/</code> to publish one.
+      </div>
+    )}
+  </div>
 </BaseLayout>
