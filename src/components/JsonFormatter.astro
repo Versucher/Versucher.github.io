@@ -1,0 +1,128 @@
+---
+// src/components/JsonFormatter.astro
+---
+
+<div class="border border-zinc-800 bg-zinc-900/20 rounded-lg p-6 space-y-4 shadow-xl backdrop-blur-sm">
+  <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+    <div class="flex items-center space-x-2">
+      <span class="text-emerald-400 font-bold">&gt;_</span>
+      <h3 class="text-md font-bold text-zinc-200">JSON 格式化 & 語法校驗器</h3>
+    </div>
+    <span class="text-xxs text-zinc-600 bg-zinc-900 px-2 py-1 rounded border border-zinc-800">CLIENT_SIDE_ONLY</span>
+  </div>
+
+  <div class="flex flex-wrap gap-2 text-xs">
+    <button id="btn-fmt-2" class="px-3 py-1.5 bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 rounded transition font-mono border border-zinc-700 hover:border-emerald-500">
+      格式化 (2空格)
+    </button>
+    <button id="btn-fmt-4" class="px-3 py-1.5 bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 rounded transition font-mono border border-zinc-700 hover:border-emerald-500">
+      格式化 (4空格)
+    </button>
+    <button id="btn-minify" class="px-3 py-1.5 bg-zinc-800 hover:bg-amber-500 hover:text-zinc-950 text-zinc-300 rounded transition font-mono border border-zinc-700 hover:border-amber-500">
+      壓縮 (Minify)
+    </button>
+    <div class="flex-grow"></div>
+    <button id="btn-clear" class="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 rounded transition border border-zinc-800">
+      清空
+    </button>
+    <button id="btn-copy" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded transition border border-emerald-500/30">
+      複製結果
+    </button>
+  </div>
+
+  <div id="error-alert" class="hidden p-3 border border-red-900/50 bg-red-950/20 text-red-400 text-xs rounded font-mono break-all">
+    [ERROR] 
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[450px]">
+    <div class="flex flex-col space-y-1.5 h-full">
+      <label class="text-xs text-zinc-500 font-mono">// 原始 JSON 字串</label>
+      <textarea 
+        id="json-input" 
+        class="w-full flex-grow p-4 bg-zinc-950 border border-zinc-800 rounded text-sm text-zinc-300 font-mono focus:outline-none focus:border-emerald-500 resize-none placeholder-zinc-700 focus:ring-1 focus:ring-emerald-500/20"
+        placeholder='請貼上您的 JSON 數據，例如：{"status":"ok","code":200}'
+      ></textarea>
+    </div>
+
+    <div class="flex flex-col space-y-1.5 h-full">
+      <label class="text-xs text-zinc-500 font-mono">// 處理結果</label>
+      <textarea 
+        id="json-output" 
+        readonly
+        class="w-full flex-grow p-4 bg-zinc-950/50 border border-zinc-800 rounded text-sm text-emerald-400 font-mono focus:outline-none resize-none placeholder-zinc-800"
+        placeholder="// 等待處理..."
+      ></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 獲取 DOM 節點
+  const inputArea = document.getElementById('json-input') as HTMLTextAreaElement;
+  const outputArea = document.getElementById('json-output') as HTMLTextAreaElement;
+  const errorAlert = document.getElementById('error-alert');
+  
+  const btnFmt2 = document.getElementById('btn-fmt-2');
+  const btnFmt4 = document.getElementById('btn-fmt-4');
+  const btnMinify = document.getElementById('btn-minify');
+  const btnClear = document.getElementById('btn-clear');
+  const btnCopy = document.getElementById('btn-copy');
+
+  // 核心處理函式
+  function processJSON(space: number | string) {
+    // 隱藏上一次的錯誤
+    if (errorAlert) errorAlert.classList.add('hidden');
+    
+    const rawValue = inputArea.value.trim();
+    if (!rawValue) {
+      outputArea.value = '';
+      return;
+    }
+
+    try {
+      // 1. 嘗試解析字串（驗證語法）
+      const parsed = JSON.parse(rawValue);
+      
+      // 2. 重新序列化輸出
+      if (space === 'minify') {
+        outputArea.value = JSON.stringify(parsed);
+      } else {
+        outputArea.value = JSON.stringify(parsed, null, space as number);
+      }
+    } catch (err: any) {
+      // 3. 捕捉錯誤並精準顯示
+      outputArea.value = '';
+      if (errorAlert) {
+        errorAlert.textContent = `[PARSE_ERROR] ${err.message}`;
+        errorAlert.classList.remove('hidden');
+      }
+    }
+  }
+
+  // 綁定按鈕事件
+  btnFmt2?.addEventListener('click', () => processJSON(2));
+  btnFmt4?.addEventListener('click', () => processJSON(4));
+  btnMinify?.addEventListener('click', () => processJSON('minify'));
+
+  btnClear?.addEventListener('click', () => {
+    inputArea.value = '';
+    outputArea.value = '';
+    if (errorAlert) errorAlert.classList.add('hidden');
+  });
+
+  btnCopy?.addEventListener('click', () => {
+    if (!outputArea.value) return;
+    
+    // 調用瀏覽器剪貼簿 API
+    navigator.clipboard.writeText(outputArea.value).then(() => {
+      const originalText = btnCopy.textContent;
+      btnCopy.textContent = '✓ 已複製';
+      btnCopy.classList.add('text-white', 'bg-emerald-600');
+      
+      setTimeout(() => {
+        btnCopy.textContent = originalText;
+        btnCopy.classList.remove('text-white', 'bg-emerald-600');
+      }, 1500);
+    });
+  });
+</script>

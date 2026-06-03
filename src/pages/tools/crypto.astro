@@ -1,0 +1,650 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Crypto Toolkit // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Crypto Toolkit</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Classical ciphers, encoding tricks, and Morse code — all running in your browser.
+    </p>
+  </header>
+
+  <div id="crypto-app" class="mt-6 space-y-6">
+    <!-- 工具切換選項卡 -->
+    <div class="flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
+      <button data-tab="base" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700 active">Base</button>
+      <button data-tab="ascii" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700">ASCII</button>
+      <button data-tab="caesar" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700">Caesar</button>
+      <button data-tab="vigenere" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700">Vigenère</button>
+      <button data-tab="playfair" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700">Playfair</button>
+      <button data-tab="railfence" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700">Rail Fence</button>
+      <button data-tab="morse" class="tab-btn rounded px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700">Morse</button>
+    </div>
+
+    <!-- 工具區塊容器 -->
+    <div id="tab-content" class="min-h-[300px]"></div>
+  </div>
+</BaseLayout>
+
+<script>
+  // ==================== 標籤切換邏輯 ====================
+  const tabs = document.querySelectorAll('.tab-btn');
+  const contentDiv = document.getElementById('tab-content');
+
+  function switchTab(tabId) {
+    tabs.forEach(btn => {
+      const isActive = btn.dataset.tab === tabId;
+      btn.classList.toggle('border-emerald-500', isActive);
+      btn.classList.toggle('text-emerald-400', isActive);
+      btn.classList.toggle('bg-emerald-500/10', isActive);
+      btn.classList.toggle('text-zinc-400', !isActive);
+      btn.classList.toggle('border-transparent', !isActive);
+    });
+    renderTabContent(tabId);
+  }
+
+  tabs.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+  // ==================== 渲染各工具表單 ====================
+  function renderTabContent(tab) {
+    let html = '';
+    switch (tab) {
+      case 'base': html = renderBaseConvert(); break;
+      case 'ascii': html = renderAscii(); break;
+      case 'caesar': html = renderCaesar(); break;
+      case 'vigenere': html = renderVigenere(); break;
+      case 'playfair': html = renderPlayfair(); break;
+      case 'railfence': html = renderRailFence(); break;
+      case 'morse': html = renderMorse(); break;
+    }
+    contentDiv.innerHTML = html;
+    bindEvents(tab);
+  }
+
+  // ==================== 通用輔助 ====================
+  function escapeHtml(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ==================== HTML 模板 ====================
+  function renderBaseConvert() {
+    return `
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Number</label>
+            <input type="text" id="base-number" placeholder="e.g. 42" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">From Base</label>
+            <input type="number" id="from-base" value="10" min="2" max="36" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">To Base</label>
+            <input type="number" id="to-base" value="2" min="2" max="36" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+        </div>
+        <button id="convert-base-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Convert</button>
+        <div id="base-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  function renderAscii() {
+    return `
+      <div class="space-y-4">
+        <div class="flex gap-4">
+          <button id="ascii-mode-text" class="ascii-mode-btn rounded border border-emerald-500 bg-emerald-500/10 px-4 py-1.5 text-xs font-medium text-emerald-400">Text → ASCII</button>
+          <button id="ascii-mode-code" class="ascii-mode-btn rounded border border-zinc-800 px-4 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200">ASCII → Text</button>
+        </div>
+        <div id="ascii-input-area">
+          <label class="block text-xs text-zinc-400 mb-1">Text</label>
+          <textarea id="ascii-text" rows="4" placeholder="Enter text..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"></textarea>
+        </div>
+        <div class="flex items-center gap-4">
+          <label class="text-xs text-zinc-400">Format:</label>
+          <select id="ascii-format" class="rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-200 outline-none">
+            <option value="dec">Decimal</option>
+            <option value="hex">Hex</option>
+            <option value="oct">Octal</option>
+            <option value="bin">Binary</option>
+          </select>
+          <button id="convert-ascii-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Convert</button>
+        </div>
+        <div id="ascii-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  function renderCaesar() {
+    return `
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Text</label>
+            <textarea id="caesar-text" rows="4" placeholder="Enter text..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Shift (1-25)</label>
+            <input type="number" id="caesar-shift" value="3" min="1" max="25" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+            <div class="mt-3 space-x-2">
+              <button id="caesar-encode" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Encrypt</button>
+              <button id="caesar-decode" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200">Decrypt</button>
+            </div>
+          </div>
+        </div>
+        <div id="caesar-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  function renderVigenere() {
+    return `
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Text</label>
+            <textarea id="vig-text" rows="4" placeholder="Enter text..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Key (letters only)</label>
+            <input type="text" id="vig-key" placeholder="e.g. LEMON" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+            <div class="mt-3 space-x-2">
+              <button id="vig-encode" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Encrypt</button>
+              <button id="vig-decode" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200">Decrypt</button>
+            </div>
+          </div>
+        </div>
+        <div id="vig-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  function renderPlayfair() {
+    return `
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Text (only letters)</label>
+            <textarea id="pf-text" rows="4" placeholder="Enter text..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 uppercase outline-none focus:border-emerald-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Keyword</label>
+            <input type="text" id="pf-key" placeholder="e.g. PLAYFAIR" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+            <div class="mt-3 space-x-2">
+              <button id="pf-encode" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Encrypt</button>
+              <button id="pf-decode" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200">Decrypt</button>
+            </div>
+          </div>
+        </div>
+        <div id="pf-matrix" class="text-xs font-mono text-zinc-500 my-2"></div>
+        <div id="pf-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  function renderRailFence() {
+    return `
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Text</label>
+            <textarea id="rf-text" rows="4" placeholder="Enter text..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Rails (2+)</label>
+            <input type="number" id="rf-rails" value="3" min="2" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+            <div class="mt-3 space-x-2">
+              <button id="rf-encode" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Encrypt</button>
+              <button id="rf-decode" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200">Decrypt</button>
+            </div>
+          </div>
+        </div>
+        <div id="rf-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  function renderMorse() {
+    return `
+      <div class="space-y-4">
+        <p class="text-xs text-zinc-500">International Morse code. Use <code>.</code> (dot) and <code>-</code> (dash). Letters separated by spaces, words by <code>/</code>.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Text</label>
+            <textarea id="morse-text" rows="4" placeholder="Enter text or Morse code..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"></textarea>
+          </div>
+          <div>
+            <div class="flex items-center gap-4 mb-3">
+              <button id="morse-encode" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Text → Morse</button>
+              <button id="morse-decode" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200">Morse → Text</button>
+              <button id="morse-play" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200" title="Play Morse code">▶ Play</button>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-zinc-500 mb-3">
+              <label>Speed (WPM):</label>
+              <input type="range" id="morse-wpm" min="5" max="40" value="20" class="accent-emerald-500">
+              <span id="morse-wpm-value">20</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-zinc-500">
+              <label>Frequency (Hz):</label>
+              <input type="range" id="morse-freq" min="400" max="1000" value="600" class="accent-emerald-500">
+              <span id="morse-freq-value">600</span>
+            </div>
+          </div>
+        </div>
+        <div id="morse-result" class="rounded border border-zinc-800 bg-zinc-950 p-4 text-sm font-mono text-zinc-300 break-all min-h-[3rem]"></div>
+      </div>
+    `;
+  }
+
+  // ==================== 各工具邏輯 ====================
+  // 進制轉換
+  function baseConvert() {
+    const num = document.getElementById('base-number').value.trim();
+    const fromBase = parseInt(document.getElementById('from-base').value);
+    const toBase = parseInt(document.getElementById('to-base').value);
+    const resultEl = document.getElementById('base-result');
+    if (!num || isNaN(fromBase) || isNaN(toBase) || fromBase < 2 || fromBase > 36 || toBase < 2 || toBase > 36) {
+      resultEl.textContent = 'Invalid input';
+      return;
+    }
+    try {
+      const decimal = parseInt(num, fromBase);
+      if (isNaN(decimal)) throw new Error();
+      const converted = decimal.toString(toBase).toUpperCase();
+      resultEl.textContent = `${num} (base ${fromBase}) = ${converted} (base ${toBase})`;
+    } catch {
+      resultEl.textContent = 'Conversion error';
+    }
+  }
+
+  // ASCII 轉換
+  let asciiMode = 'text2code'; // 'text2code' or 'code2text'
+  function asciiConvert() {
+    const text = document.getElementById('ascii-text').value;
+    const format = document.getElementById('ascii-format').value;
+    const resultEl = document.getElementById('ascii-result');
+    if (asciiMode === 'text2code') {
+      if (!text) { resultEl.textContent = ''; return; }
+      const codes = [];
+      for (const ch of text) {
+        const code = ch.charCodeAt(0);
+        let str;
+        switch (format) {
+          case 'dec': str = String(code); break;
+          case 'hex': str = code.toString(16).toUpperCase().padStart(2, '0'); break;
+          case 'oct': str = code.toString(8); break;
+          case 'bin': str = code.toString(2).padStart(8, '0'); break;
+          default: str = String(code);
+        }
+        codes.push(str);
+      }
+      resultEl.textContent = codes.join(' ');
+    } else {
+      const cleaned = text.replace(/\s+/g, ' ').trim();
+      const parts = cleaned.split(' ');
+      let result = '';
+      for (const part of parts) {
+        let code;
+        try {
+          if (format === 'dec') code = parseInt(part, 10);
+          else if (format === 'hex') code = parseInt(part, 16);
+          else if (format === 'oct') code = parseInt(part, 8);
+          else if (format === 'bin') code = parseInt(part, 2);
+          else code = parseInt(part, 10);
+          if (isNaN(code)) throw new Error();
+          result += String.fromCharCode(code);
+        } catch {
+          result += '�';
+        }
+      }
+      resultEl.textContent = result;
+    }
+  }
+
+  // 凱撒
+  function caesar(str, shift, decrypt = false) {
+    shift = (decrypt ? (26 - shift) : shift) % 26;
+    return str.replace(/[a-zA-Z]/g, c => {
+      const base = c <= 'Z' ? 65 : 97;
+      return String.fromCharCode(((c.charCodeAt(0) - base + shift) % 26) + base);
+    });
+  }
+
+  // 維吉尼亞
+  function vigenere(str, key, decrypt = false) {
+    const keyStr = key.replace(/[^a-zA-Z]/g, '').toUpperCase();
+    if (!keyStr) return str;
+    let j = 0;
+    return str.replace(/[a-zA-Z]/g, c => {
+      const isUpper = c <= 'Z';
+      const base = isUpper ? 65 : 97;
+      const textChar = c.toUpperCase().charCodeAt(0) - 65;
+      const keyChar = keyStr.charCodeAt(j % keyStr.length) - 65;
+      const shift = decrypt ? (textChar - keyChar + 26) % 26 : (textChar + keyChar) % 26;
+      j++;
+      return String.fromCharCode(shift + (isUpper ? 65 : 97));
+    });
+  }
+
+  // 普萊費爾
+  function generatePlayfairMatrix(key) {
+    const alphabet = 'ABCDEFGHIKLMNOPQRSTUVWXYZ'; // I=J
+    const seen = new Set();
+    const merged = (key.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '') + alphabet)
+      .split('')
+      .filter(ch => { if (seen.has(ch)) return false; seen.add(ch); return true; });
+    const matrix = [];
+    for (let i = 0; i < 5; i++) matrix.push(merged.slice(i * 5, i * 5 + 5));
+    return matrix;
+  }
+
+  function findPosition(matrix, ch) {
+    for (let r = 0; r < 5; r++) {
+      const c = matrix[r].indexOf(ch);
+      if (c !== -1) return [r, c];
+    }
+    return null;
+  }
+
+  function playfairProcess(text, key, decrypt = false) {
+    const matrix = generatePlayfairMatrix(key);
+    let cleaned = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+    if (cleaned.length % 2 !== 0) cleaned += 'X';
+    const pairs = [];
+    for (let i = 0; i < cleaned.length; i += 2) {
+      let a = cleaned[i];
+      let b = cleaned[i + 1];
+      if (a === b) b = 'X'; // 簡化處理重複字母
+      pairs.push([a, b]);
+    }
+    const result = pairs.map(([a, b]) => {
+      const [r1, c1] = findPosition(matrix, a);
+      const [r2, c2] = findPosition(matrix, b);
+      if (r1 === r2) {
+        const shift = decrypt ? -1 : 1;
+        return matrix[r1][(c1 + shift + 5) % 5] + matrix[r2][(c2 + shift + 5) % 5];
+      } else if (c1 === c2) {
+        const shift = decrypt ? -1 : 1;
+        return matrix[(r1 + shift + 5) % 5][c1] + matrix[(r2 + shift + 5) % 5][c2];
+      } else {
+        return matrix[r1][c2] + matrix[r2][c1];
+      }
+    }).join('');
+    return { cipher: result, matrix };
+  }
+
+  // 柵欄密碼
+  function railFenceEncode(text, rails) {
+    if (rails < 2) return text;
+    const fence = Array.from({ length: rails }, () => []);
+    let rail = 0, dir = 1;
+    for (const ch of text) {
+      fence[rail].push(ch);
+      rail += dir;
+      if (rail === 0 || rail === rails - 1) dir *= -1;
+    }
+    return fence.flat().join('');
+  }
+
+  function railFenceDecode(text, rails) {
+    if (rails < 2) return text;
+    const len = text.length;
+    const pattern = [];
+    let rail = 0, dir = 1;
+    for (let i = 0; i < len; i++) {
+      pattern.push(rail);
+      rail += dir;
+      if (rail === 0 || rail === rails - 1) dir *= -1;
+    }
+    const fence = Array.from({ length: rails }, () => []);
+    const counts = Array(rails).fill(0);
+    pattern.forEach(r => counts[r]++);
+    let idx = 0;
+    for (let r = 0; r < rails; r++) {
+      fence[r] = text.slice(idx, idx + counts[r]).split('');
+      idx += counts[r];
+    }
+    let result = '';
+    const pointers = Array(rails).fill(0);
+    for (const r of pattern) {
+      result += fence[r][pointers[r]++];
+    }
+    return result;
+  }
+
+  // ==================== 摩斯密碼 ====================
+  const morseMap = {
+    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+    'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+    'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+    'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+    'Y': '-.--', 'Z': '--..',
+    '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+    '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+    '.': '.-.-.-', ',': '--..--', '?': '..--..', "'": '.----.', '!': '-.-.--',
+    '/': '-..-.', '(': '-.--.', ')': '-.--.-', '&': '.-...', ':': '---...',
+    ';': '-.-.-.', '=': '-...-', '+': '.-.-.', '-': '-....-', '_': '..--.-',
+    '"': '.-..-.', '$': '...-..-', '@': '.--.-.', ' ': '/'
+  };
+  // 建立反向映射（解碼用）
+  const reverseMorseMap = Object.fromEntries(Object.entries(morseMap).map(([k, v]) => [v, k]));
+
+  function textToMorse(text) {
+    return text.toUpperCase().split('').map(ch => morseMap[ch] || ch).join(' ');
+  }
+
+  function morseToText(morse) {
+    // 以空格分割，連續空格或斜線視為單詞邊界
+    const tokens = morse.trim().split(/\s+/);
+    let result = '';
+    for (const token of tokens) {
+      if (token === '/') {
+        result += ' ';
+      } else {
+        result += reverseMorseMap[token] || token;
+      }
+    }
+    return result;
+  }
+
+  // 摩斯音頻播放 (Web Audio API)
+  let audioContext = null;
+  let isPlaying = false;
+  let stopRequested = false;
+
+  function getAudioContext() {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioContext;
+  }
+
+  async function playMorse(morseString, wpm = 20, frequency = 600) {
+    if (isPlaying) {
+      stopRequested = true;
+      return;
+    }
+    const ctx = getAudioContext();
+    isPlaying = true;
+    stopRequested = false;
+    
+    // 基本時間單元 (以 Paris 標準, dit 長度 = 1.2 / wpm 秒)
+    const unit = 1.2 / wpm; // 秒
+    const dotDuration = unit;
+    const dashDuration = 3 * unit;
+    const symbolGap = unit;          // 同一字母內點劃間隔
+    const letterGap = 3 * unit;      // 字母間隔
+    const wordGap = 7 * unit;        // 單詞間隔
+
+    let currentTime = ctx.currentTime;
+    const gainNode = ctx.createGain();
+    gainNode.connect(ctx.destination);
+    gainNode.gain.value = 0.3; // 音量
+
+    const scheduleTone = (start, duration) => {
+      if (stopRequested) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = frequency;
+      osc.connect(gainNode);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+
+    for (const char of morseString) {
+      if (stopRequested) break;
+      if (char === '.') {
+        scheduleTone(currentTime, dotDuration);
+        currentTime += dotDuration + symbolGap;
+      } else if (char === '-') {
+        scheduleTone(currentTime, dashDuration);
+        currentTime += dashDuration + symbolGap;
+      } else if (char === ' ') {
+        // 字母間隔：已經包含在最後的點劃間隔中，我們需要補足差額
+        // 因為每個點劃後已經加了 symbolGap，所以這裡僅需增加 letterGap - symbolGap
+        currentTime += (letterGap - symbolGap);
+      } else if (char === '/') {
+        // 單詞間隔（解碼時通常用斜線代表空格）
+        currentTime += (wordGap - symbolGap);
+      }
+    }
+
+    // 等待播放完成
+    const totalDuration = currentTime - ctx.currentTime;
+    if (totalDuration > 0) {
+      await new Promise(resolve => setTimeout(resolve, totalDuration * 1000 + 100));
+    }
+    isPlaying = false;
+  }
+
+  // ==================== 事件綁定 ====================
+  function bindEvents(tab) {
+    if (tab === 'base') {
+      document.getElementById('convert-base-btn').onclick = baseConvert;
+    }
+    else if (tab === 'ascii') {
+      const modeBtns = document.querySelectorAll('.ascii-mode-btn');
+      modeBtns.forEach(btn => {
+        btn.onclick = () => {
+          modeBtns.forEach(b => { 
+            b.classList.remove('border-emerald-500','bg-emerald-500/10','text-emerald-400'); 
+            b.classList.add('border-zinc-800','text-zinc-400'); 
+          });
+          btn.classList.add('border-emerald-500','bg-emerald-500/10','text-emerald-400');
+          asciiMode = btn.id === 'ascii-mode-text' ? 'text2code' : 'code2text';
+          const label = document.querySelector('#ascii-input-area label');
+          const placeholder = document.querySelector('#ascii-input-area textarea');
+          if (asciiMode === 'text2code') {
+            label.textContent = 'Text';
+            placeholder.placeholder = 'Enter text...';
+          } else {
+            label.textContent = 'Codes (space separated)';
+            placeholder.placeholder = 'Enter ASCII codes...';
+          }
+          document.getElementById('ascii-result').textContent = '';
+        };
+      });
+      document.getElementById('convert-ascii-btn').onclick = asciiConvert;
+    }
+    else if (tab === 'caesar') {
+      document.getElementById('caesar-encode').onclick = () => {
+        const text = document.getElementById('caesar-text').value;
+        const shift = parseInt(document.getElementById('caesar-shift').value) || 3;
+        document.getElementById('caesar-result').textContent = caesar(text, shift, false);
+      };
+      document.getElementById('caesar-decode').onclick = () => {
+        const text = document.getElementById('caesar-text').value;
+        const shift = parseInt(document.getElementById('caesar-shift').value) || 3;
+        document.getElementById('caesar-result').textContent = caesar(text, shift, true);
+      };
+    }
+    else if (tab === 'vigenere') {
+      document.getElementById('vig-encode').onclick = () => {
+        const text = document.getElementById('vig-text').value;
+        const key = document.getElementById('vig-key').value;
+        document.getElementById('vig-result').textContent = vigenere(text, key, false);
+      };
+      document.getElementById('vig-decode').onclick = () => {
+        const text = document.getElementById('vig-text').value;
+        const key = document.getElementById('vig-key').value;
+        document.getElementById('vig-result').textContent = vigenere(text, key, true);
+      };
+    }
+    else if (tab === 'playfair') {
+      const updateMatrixDisplay = (matrix) => {
+        const el = document.getElementById('pf-matrix');
+        if (matrix) {
+          el.innerHTML = matrix.map(row => row.join(' ')).join('<br>');
+        } else el.innerHTML = '';
+      };
+      document.getElementById('pf-encode').onclick = () => {
+        const text = document.getElementById('pf-text').value;
+        const key = document.getElementById('pf-key').value;
+        if (!key) return;
+        const { cipher, matrix } = playfairProcess(text, key, false);
+        document.getElementById('pf-result').textContent = cipher;
+        updateMatrixDisplay(matrix);
+      };
+      document.getElementById('pf-decode').onclick = () => {
+        const text = document.getElementById('pf-text').value;
+        const key = document.getElementById('pf-key').value;
+        if (!key) return;
+        const { cipher, matrix } = playfairProcess(text, key, true);
+        document.getElementById('pf-result').textContent = cipher;
+        updateMatrixDisplay(matrix);
+      };
+    }
+    else if (tab === 'railfence') {
+      document.getElementById('rf-encode').onclick = () => {
+        const text = document.getElementById('rf-text').value;
+        const rails = parseInt(document.getElementById('rf-rails').value) || 3;
+        document.getElementById('rf-result').textContent = railFenceEncode(text, rails);
+      };
+      document.getElementById('rf-decode').onclick = () => {
+        const text = document.getElementById('rf-text').value;
+        const rails = parseInt(document.getElementById('rf-rails').value) || 3;
+        document.getElementById('rf-result').textContent = railFenceDecode(text, rails);
+      };
+    }
+    else if (tab === 'morse') {
+      document.getElementById('morse-encode').onclick = () => {
+        const text = document.getElementById('morse-text').value;
+        document.getElementById('morse-result').textContent = textToMorse(text);
+      };
+      document.getElementById('morse-decode').onclick = () => {
+        const morse = document.getElementById('morse-text').value;
+        document.getElementById('morse-result').textContent = morseToText(morse);
+      };
+      // 播放按鈕
+      document.getElementById('morse-play').onclick = async () => {
+        const btn = document.getElementById('morse-play');
+        const currentText = document.getElementById('morse-result').textContent;
+        if (!currentText.trim()) return;
+        const wpm = parseInt(document.getElementById('morse-wpm').value) || 20;
+        const freq = parseInt(document.getElementById('morse-freq').value) || 600;
+        
+        if (isPlaying) {
+          stopRequested = true;
+          btn.textContent = '▶ Play';
+          return;
+        }
+        btn.textContent = '⏹ Stop';
+        await playMorse(currentText, wpm, freq);
+        btn.textContent = '▶ Play';
+      };
+      // WPM 和頻率滑塊顯示數值
+      const wpmInput = document.getElementById('morse-wpm');
+      const wpmValue = document.getElementById('morse-wpm-value');
+      wpmInput.oninput = () => { wpmValue.textContent = wpmInput.value; };
+      const freqInput = document.getElementById('morse-freq');
+      const freqValue = document.getElementById('morse-freq-value');
+      freqInput.oninput = () => { freqValue.textContent = freqInput.value; };
+    }
+  }
+
+  // 預設載入第一個工具
+  switchTab('base');
+</script>

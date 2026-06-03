@@ -1,0 +1,142 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Image Compressor // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Image Compressor</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Compress images right in your browser — adjust quality and download instantly.
+    </p>
+  </header>
+
+  <div id="img-compressor" class="mt-6 space-y-6">
+    <div>
+      <label class="block text-xs text-zinc-400 mb-2">Choose an image</label>
+      <input type="file" id="file-input" accept="image/*" class="rounded border border-zinc-800 bg-zinc-900/50 text-xs text-zinc-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:bg-emerald-600 file:text-white hover:file:bg-emerald-500"/>
+    </div>
+
+    <div id="settings" class="hidden space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Quality (0 - 100)</label>
+          <input type="range" id="quality-slider" min="10" max="100" value="80" class="w-full accent-emerald-500">
+          <span id="quality-value" class="text-xs text-zinc-500">80</span>
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Max Width (px, optional)</label>
+          <input type="number" id="max-width" placeholder="e.g. 1200" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+        </div>
+      </div>
+      <button id="compress-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Compress</button>
+    </div>
+
+    <div id="preview-area" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <p class="text-xs text-zinc-500 mb-1">Original</p>
+        <div class="rounded border border-zinc-800 bg-zinc-950 p-2">
+          <img id="original-img" class="max-w-full max-h-64 object-contain mx-auto" alt="Original image" />
+        </div>
+        <p id="original-size" class="mt-1 text-xs text-zinc-500"></p>
+      </div>
+      <div>
+        <p class="text-xs text-zinc-500 mb-1">Compressed</p>
+        <div class="rounded border border-zinc-800 bg-zinc-950 p-2">
+          <img id="compressed-img" class="max-w-full max-h-64 object-contain mx-auto" alt="Compressed image" />
+        </div>
+        <p id="compressed-size" class="mt-1 text-xs text-zinc-500"></p>
+        <button id="download-compressed" class="mt-2 rounded border border-zinc-800 px-4 py-1 text-xs text-zinc-400 hover:text-zinc-200" disabled>Download</button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const fileInput = document.getElementById('file-input');
+  const settingsDiv = document.getElementById('settings');
+  const previewArea = document.getElementById('preview-area');
+  const qualitySlider = document.getElementById('quality-slider');
+  const qualityValue = document.getElementById('quality-value');
+  const maxWidthInput = document.getElementById('max-width');
+  const compressBtn = document.getElementById('compress-btn');
+  const originalImg = document.getElementById('original-img');
+  const compressedImg = document.getElementById('compressed-img');
+  const originalSizeSpan = document.getElementById('original-size');
+  const compressedSizeSpan = document.getElementById('compressed-size');
+  const downloadBtn = document.getElementById('download-compressed');
+
+  let originalFile = null;
+  let originalImage = null;
+  let compressedBlob = null;
+
+  qualitySlider.addEventListener('input', () => {
+    qualityValue.textContent = qualitySlider.value;
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    originalFile = file;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      originalImg.src = event.target.result;
+      originalImage = new Image();
+      originalImage.src = event.target.result;
+      originalImage.onload = () => {
+        previewArea.classList.remove('hidden');
+        settingsDiv.classList.remove('hidden');
+        originalSizeSpan.textContent = `Size: ${formatBytes(file.size)}`;
+        compressedImg.src = '';
+        compressedSizeSpan.textContent = '';
+        downloadBtn.disabled = true;
+      };
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  compressBtn.addEventListener('click', () => {
+    if (!originalImage) return;
+
+    const canvas = document.createElement('canvas');
+    let width = originalImage.width;
+    let height = originalImage.height;
+
+    const maxWidth = parseInt(maxWidthInput.value);
+    if (maxWidth && maxWidth < width) {
+      const ratio = maxWidth / width;
+      width = maxWidth;
+      height = Math.round(height * ratio);
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImage, 0, 0, width, height);
+
+    const quality = parseInt(qualitySlider.value) / 100;
+    canvas.toBlob((blob) => {
+      compressedBlob = blob;
+      compressedImg.src = URL.createObjectURL(blob);
+      compressedSizeSpan.textContent = `Size: ${formatBytes(blob.size)}`;
+      downloadBtn.disabled = false;
+    }, 'image/jpeg', quality);
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!compressedBlob) return;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(compressedBlob);
+    link.download = originalFile.name.replace(/\.[^/.]+$/, '') + '_compressed.jpg';
+    link.click();
+  });
+</script>

@@ -1,5 +1,4 @@
 ---
-layout: ../../layouts/BlogPostLayout.astro
 title: "Hello Astro"
 description: "A short test article to verify that Markdown posts are generated automatically."
 date: "2026-06-03"
@@ -10,7 +9,7 @@ tags:
 
 ## Why this post exists
 
-This is a small test article for the Blog section. The goal is simple: when a Markdown file is added under `src/pages/blog/`, Astro should generate a public article page during the static build.
+This is a small test article for the Blog section. The goal is simple: when a Markdown file is added under `src/content/blog/`, Astro should generate a public article page during the static build.
 
 ## Current setup
 

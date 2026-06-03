@@ -1,0 +1,388 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Link Checker // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Link checker</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Track important site links before shipping changes.
+      <span class="text-zinc-500">（受限於瀏覽器 CORS 政策，跨域鏈接可能無法檢查）</span>
+    </p>
+  </header>
+
+  <div id="link-checker-app" class="mt-6 space-y-6">
+    <!-- 輸入區域 -->
+    <div class="space-y-4">
+      <div>
+        <label for="links-input" class="mb-1.5 block text-xs font-medium text-zinc-400">
+          Links to check（每行一個）
+        </label>
+        <textarea
+          id="links-input"
+          rows="6"
+          placeholder="https://example.com&#10;/relative/path&#10;https://another-site.org/page"
+          class="w-full rounded border border-zinc-800 bg-zinc-900/50 py-2 px-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-emerald-500 resize-y"
+        ></textarea>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label for="base-url" class="text-xs text-zinc-400">Base URL（用於相對路徑）</label>
+          <input
+            type="text"
+            id="base-url"
+            placeholder="https://yoursite.com"
+            class="rounded border border-zinc-800 bg-zinc-900/50 py-1.5 px-3 text-xs text-zinc-200 outline-none focus:border-emerald-500 w-60"
+          />
+        </div>
+        <button
+          id="check-btn"
+          class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+        >
+          Check Links
+        </button>
+        <button
+          id="stop-btn"
+          class="hidden rounded border border-red-800 px-4 py-2 text-xs text-red-400 hover:bg-red-900/20"
+        >
+          Stop
+        </button>
+        <button
+          id="clear-results-btn"
+          class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+        >
+          Clear Results
+        </button>
+      </div>
+    </div>
+
+    <!-- 進度條 -->
+    <div id="progress-area" class="hidden space-y-2">
+      <div class="flex justify-between text-xs text-zinc-400">
+        <span id="progress-text">0 / 0 checked</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div class="h-1 w-full overflow-hidden rounded bg-zinc-800">
+        <div id="progress-bar" class="h-full w-0 bg-emerald-500 transition-all duration-200"></div>
+      </div>
+    </div>
+
+    <!-- 結果表格 -->
+    <div id="results-area" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div id="summary-stats" class="flex flex-wrap gap-3 text-xs"></div>
+        <button id="export-csv-btn" class="text-xs text-emerald-400 hover:underline">Export CSV</button>
+      </div>
+      <div class="overflow-x-auto rounded border border-zinc-800">
+        <table class="w-full text-xs">
+          <thead class="border-b border-zinc-800 bg-zinc-900/50 text-left">
+            <tr>
+              <th class="py-2 px-4 font-medium text-zinc-400">Link</th>
+              <th class="py-2 px-4 font-medium text-zinc-400">Status</th>
+              <th class="py-2 px-4 font-medium text-zinc-400">Code</th>
+              <th class="py-2 px-4 font-medium text-zinc-400">Time (ms)</th>
+              <th class="py-2 px-4 font-medium text-zinc-400">Details</th>
+            </tr>
+          </thead>
+          <tbody id="results-table" class="divide-y divide-zinc-800"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  // ---------- 元素引用 ----------
+  const linksInput = document.getElementById('links-input');
+  const baseUrlInput = document.getElementById('base-url');
+  const checkBtn = document.getElementById('check-btn');
+  const stopBtn = document.getElementById('stop-btn');
+  const clearBtn = document.getElementById('clear-results-btn');
+  const progressArea = document.getElementById('progress-area');
+  const progressText = document.getElementById('progress-text');
+  const progressPercent = document.getElementById('progress-percent');
+  const progressBar = document.getElementById('progress-bar');
+  const resultsArea = document.getElementById('results-area');
+  const summaryStats = document.getElementById('summary-stats');
+  const resultsTable = document.getElementById('results-table');
+  const exportCsvBtn = document.getElementById('export-csv-btn');
+
+  let checkResults = [];          // 儲存所有檢查結果
+  let abortController = null;     // 用於取消請求
+  let isRunning = false;
+
+  // ---------- 輔助函數 ----------
+  function parseLinks(raw) {
+    const lines = raw.split(/\n/);
+    const base = baseUrlInput.value.trim().replace(/\/$/, '');
+    const links = [];
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      try {
+        // 嘗試直接解析 URL，如果失敗則嘗試拼接 base
+        let url;
+        if (/^https?:\/\//i.test(line)) {
+          url = new URL(line);
+        } else if (base) {
+          // 相對路徑用 base URL 拼接
+          url = new URL(line, base + '/');
+        } else {
+          // 沒有 base 且不是絕對 URL，標記為 invalid
+          links.push({ original: line, url: null, valid: false, error: 'Missing base URL for relative link' });
+          continue;
+        }
+        links.push({ original: line, url: url.href, valid: true });
+      } catch (e) {
+        links.push({ original: line, url: null, valid: false, error: 'Invalid URL' });
+      }
+    }
+    return links;
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderResults() {
+    if (checkResults.length === 0) {
+      resultsArea.classList.add('hidden');
+      return;
+    }
+    resultsArea.classList.remove('hidden');
+
+    // 統計
+    const total = checkResults.length;
+    const success = checkResults.filter(r => r.ok).length;
+    const failed = checkResults.filter(r => !r.ok && !r.cors).length;
+    const cors = checkResults.filter(r => r.cors).length;
+    const errors = checkResults.filter(r => r.error).length;
+
+    summaryStats.innerHTML = `
+      <span class="text-zinc-400">Total: <b>${total}</b></span>
+      <span class="text-emerald-400">OK: <b>${success}</b></span>
+      <span class="text-red-400">Failed: <b>${failed}</b></span>
+      <span class="text-yellow-400">CORS Blocked: <b>${cors}</b></span>
+      ${errors ? `<span class="text-zinc-500">Invalid: <b>${errors}</b></span>` : ''}
+    `;
+
+    // 表格
+    resultsTable.innerHTML = checkResults.map(r => {
+      let statusClass = 'text-zinc-400';
+      let codeDisplay = '';
+      let statusText = '';
+
+      if (r.error) {
+        statusClass = 'text-zinc-500';
+        statusText = r.error;
+        codeDisplay = '—';
+      } else if (r.cors) {
+        statusClass = 'text-yellow-400';
+        statusText = 'CORS blocked';
+        codeDisplay = '—';
+      } else if (r.timeout) {
+        statusClass = 'text-red-400';
+        statusText = 'Timeout';
+        codeDisplay = '—';
+      } else if (r.ok) {
+        statusClass = 'text-emerald-400';
+        statusText = 'OK';
+        codeDisplay = r.status;
+      } else {
+        statusClass = 'text-red-400';
+        statusText = 'Failed';
+        codeDisplay = r.status || '—';
+      }
+
+      return `
+        <tr>
+          <td class="py-2 px-4 text-zinc-300 break-all">${escapeHtml(r.original)}</td>
+          <td class="py-2 px-4 ${statusClass}">${statusText}</td>
+          <td class="py-2 px-4 font-mono text-zinc-400">${codeDisplay}</td>
+          <td class="py-2 px-4 font-mono text-zinc-500">${r.duration ? r.duration : '—'}</td>
+          <td class="py-2 px-4 text-zinc-500 text-xs">${r.details ? escapeHtml(r.details) : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ---------- 單個鏈接檢查 ----------
+  async function checkSingleLink(linkObj, signal, timeoutMs = 10000) {
+    if (!linkObj.valid) {
+      return { ...linkObj, ok: false, error: linkObj.error || 'Invalid URL', cors: false, timeout: false, duration: null, status: null, details: null };
+    }
+
+    const startTime = performance.now();
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      // 將外部 signal 也接上，以便手動停止
+      signal.addEventListener('abort', () => controller.abort());
+
+      const response = await fetch(linkObj.url, {
+        method: 'HEAD',
+        mode: 'cors',          // 嘗試 CORS，失敗會進入 catch
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+
+      clearTimeout(timeoutId);
+      const duration = Math.round(performance.now() - startTime);
+      return {
+        ...linkObj,
+        ok: response.ok,
+        status: response.status,
+        duration,
+        cors: false,
+        timeout: false,
+        error: null,
+        details: `${response.status} ${response.statusText}`,
+      };
+    } catch (err) {
+      const duration = Math.round(performance.now() - startTime);
+      // 判斷是否為 CORS 錯誤或網路錯誤
+      const isCors = err.message.includes('Failed to fetch') || err.name === 'TypeError';
+      const isTimeout = err.name === 'AbortError' && !signal.aborted; // 超時引起的 abort
+      return {
+        ...linkObj,
+        ok: false,
+        status: null,
+        duration,
+        cors: isCors && !isTimeout,
+        timeout: isTimeout,
+        error: isTimeout ? 'Request timed out' : (isCors ? 'CORS blocked or network error' : err.message),
+        details: err.message,
+      };
+    }
+  }
+
+  // ---------- 批次檢查（控制並發數） ----------
+  async function runChecks(links, concurrency = 5) {
+    abortController = new AbortController();
+    const signal = abortController.signal;
+    checkResults = [];
+    const total = links.length;
+    let completed = 0;
+
+    progressArea.classList.remove('hidden');
+    resultsArea.classList.remove('hidden');
+    checkBtn.disabled = true;
+    stopBtn.classList.remove('hidden');
+    isRunning = true;
+
+    // 建立一個並發控制隊列
+    const tasks = links.map(link => () => checkSingleLink(link, signal));
+
+    // 逐批執行
+    const results = [];
+    const executing = [];
+    for (const task of tasks) {
+      if (!isRunning) break;
+      const p = task().then(result => {
+        results.push(result);
+        completed++;
+        // 更新進度
+        progressText.textContent = `${completed} / ${total} checked`;
+        progressPercent.textContent = `${Math.round((completed / total) * 100)}%`;
+        progressBar.style.width = `${(completed / total) * 100}%`;
+        checkResults = [...results]; // 保持順序
+        renderResults();
+        executing.splice(executing.indexOf(p), 1);
+      });
+      executing.push(p);
+      if (executing.length >= concurrency) {
+        await Promise.race(executing); // 等待一個完成再繼續加入新任務
+      }
+    }
+    await Promise.all(executing); // 等待所有剩餘完成
+
+    // 完成或停止後重置狀態
+    finishCheck();
+  }
+
+  function finishCheck() {
+    isRunning = false;
+    abortController = null;
+    checkBtn.disabled = false;
+    stopBtn.classList.add('hidden');
+    progressArea.classList.add('hidden');
+  }
+
+  function stopChecks() {
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+    isRunning = false;
+    checkBtn.disabled = false;
+    stopBtn.classList.add('hidden');
+    progressArea.classList.add('hidden');
+    // renderResults 會處理已停止時的結果（顯示目前為止的結果）
+  }
+
+  // ---------- 匯出 CSV ----------
+  function exportCsv() {
+    if (checkResults.length === 0) return;
+    const headers = ['Original Link', 'Resolved URL', 'Status', 'Code', 'Duration (ms)', 'Details'];
+    const rows = checkResults.map(r => [
+      r.original,
+      r.url || '—',
+      r.error ? 'Error' : (r.cors ? 'CORS Blocked' : (r.ok ? 'OK' : 'Failed')),
+      r.status || '—',
+      r.duration || '—',
+      r.details || r.error || '—'
+    ]);
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `link-checker-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- 事件綁定 ----------
+  checkBtn.addEventListener('click', () => {
+    const raw = linksInput.value.trim();
+    if (!raw) {
+      alert('Please enter at least one link.');
+      return;
+    }
+    const links = parseLinks(raw);
+    if (links.length === 0) {
+      alert('No valid links found.');
+      return;
+    }
+    runChecks(links, 5); // 並發 5 個請求
+  });
+
+  stopBtn.addEventListener('click', stopChecks);
+  clearBtn.addEventListener('click', () => {
+    checkResults = [];
+    renderResults();
+    resultsArea.classList.add('hidden');
+  });
+
+  exportCsvBtn.addEventListener('click', exportCsv);
+
+  // 禁用 Enter 鍵提交表單（因為沒有表單，但預防萬一）
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') {
+      // 讓使用者可以換行，不攔截
+    }
+  });
+</script>
+
+<style is:global>
+  /* 表格中的連結文字顏色 */
+  #results-table td:first-child {
+    word-break: break-all;
+  }
+</style>

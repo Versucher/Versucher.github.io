@@ -1,24 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+// 1. 引入 getCollection API
+import { getCollection } from 'astro:content';
 
-// 从 blog 目录读取 Markdown，推送新文件后会在构建时自动生成文章。
-const posts = (await Astro.glob('./blog/*.md'))
-  .map((post) => ({
-    title: post.frontmatter.title,
-    description: post.frontmatter.description,
-    date: post.frontmatter.date,
-    tags: post.frontmatter.tags ?? [],
-    url: post.url,
-  }))
-  .sort((a, b) => new Date(b.date).valueOf() - new Date(a.date).valueOf());
+// 2. 获取所有的博客文章
+const allPosts = await getCollection('blog');
+
+// 3. 映射并排序数据 (将 frontmatter 改为 data，手动拼接 url)
+const posts = allPosts
+.map((post) => ({
+title: post.data.title,
+description: post.data.description,
+date: post.data.date,
+tags: post.data.tags ?? [],
+url: `/blog/${post.slug}`, // ✅ 修正：加上結尾反引號 使用 slug 生成动态路由的 URL
+}))
+.sort((a, b) => new Date(b.date).valueOf() - new Date(a.date).valueOf());
 
 const formatDate = (date) =>
-  new Intl.DateTimeFormat('en', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  }).format(new Date(date));
+new Intl.DateTimeFormat('en', {
+year: 'numeric',
+month: 'short',
+day: '2-digit',
+}).format(new Date(date));
 ---
+
 
 <BaseLayout title="0x02 // Blog">
   <header class="border-b border-zinc-800 pb-4">
@@ -49,7 +55,7 @@ const formatDate = (date) =>
       ))
     ) : (
       <div class="rounded border border-zinc-800 bg-zinc-900/25 p-5 text-sm text-zinc-500">
-        No articles yet. Add a Markdown file under <code>src/pages/blog/</code> to publish one.
+        No articles yet. Add a Markdown file under <code>src/content/blog/</code> to publish one.
       </div>
     )}
   </div>

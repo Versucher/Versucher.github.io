@@ -1,0 +1,100 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Encoder/Decoder // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Encoder / Decoder</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Base64, URL encode, HTML entities, and Unicode escape — all processed locally.
+    </p>
+  </header>
+
+  <div id="encoder-app" class="mt-6 space-y-6">
+    <div class="flex flex-wrap items-center gap-4">
+      <select id="encode-type" class="rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-emerald-500">
+        <option value="base64">Base64</option>
+        <option value="url">URL Encode</option>
+        <option value="html">HTML Entity</option>
+        <option value="unicode">Unicode Escape</option>
+      </select>
+      <button id="encode-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Encode</button>
+      <button id="decode-btn" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200">Decode</button>
+      <button id="swap-btn" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200" title="Swap input/output">⇅</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs text-zinc-400 mb-1">Input</label>
+        <textarea id="input-text" rows="8" placeholder="Enter text..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500 resize-y"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs text-zinc-400 mb-1">Output</label>
+        <textarea id="output-text" rows="8" placeholder="Result..." class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300 outline-none resize-y" readonly></textarea>
+        <button id="copy-output" class="mt-2 text-xs text-zinc-400 hover:text-emerald-400">Copy output</button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const typeSelect = document.getElementById('encode-type');
+  const inputText = document.getElementById('input-text');
+  const outputText = document.getElementById('output-text');
+  const encodeBtn = document.getElementById('encode-btn');
+  const decodeBtn = document.getElementById('decode-btn');
+  const swapBtn = document.getElementById('swap-btn');
+  const copyBtn = document.getElementById('copy-output');
+
+  function getEncoderDecoder(type) {
+    switch (type) {
+      case 'base64':
+        return {
+          encode: (s) => btoa(unescape(encodeURIComponent(s))),
+          decode: (s) => decodeURIComponent(escape(atob(s)))
+        };
+      case 'url':
+        return {
+          encode: (s) => encodeURIComponent(s),
+          decode: (s) => decodeURIComponent(s)
+        };
+      case 'html':
+        return {
+          encode: (s) => s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])),
+          decode: (s) => new DOMParser().parseFromString(s, 'text/html').documentElement.textContent
+        };
+      case 'unicode':
+        return {
+          encode: (s) => s.split('').map(c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')).join(''),
+          decode: (s) => s.replace(/\\u([\dA-Fa-f]{4})/g, (_, g) => String.fromCharCode(parseInt(g, 16)))
+        };
+      default: return { encode: s => s, decode: s => s };
+    }
+  }
+
+  function process(operation) {
+    const type = typeSelect.value;
+    const handler = getEncoderDecoder(type);
+    const input = inputText.value;
+    try {
+      const result = operation === 'encode' ? handler.encode(input) : handler.decode(input);
+      outputText.value = result;
+    } catch (e) {
+      outputText.value = 'Error: Invalid input for this operation.';
+    }
+  }
+
+  encodeBtn.addEventListener('click', () => process('encode'));
+  decodeBtn.addEventListener('click', () => process('decode'));
+  swapBtn.addEventListener('click', () => {
+    const temp = inputText.value;
+    inputText.value = outputText.value;
+    outputText.value = temp;
+  });
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(outputText.value);
+    copyBtn.textContent = 'Copied!';
+    setTimeout(() => { copyBtn.textContent = 'Copy output'; }, 1500);
+  });
+</script>

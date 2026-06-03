@@ -1,0 +1,111 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="QR Code Generator // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">QR Code Generator</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Generate QR codes for URLs, text, or any data — instantly in your browser.
+    </p>
+  </header>
+
+  <div id="qr-app" class="mt-6 space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Text or URL</label>
+          <textarea id="qr-text" rows="3" placeholder="Enter text or URL..." class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Size (px)</label>
+            <input type="number" id="qr-size" value="256" min="100" max="600" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Margin</label>
+            <input type="number" id="qr-margin" value="2" min="0" max="10" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Foreground</label>
+            <input type="color" id="qr-fg" value="#10b981" class="h-9 w-full rounded border border-zinc-800 bg-zinc-900/50 p-1 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Background</label>
+            <input type="color" id="qr-bg" value="#09090b" class="h-9 w-full rounded border border-zinc-800 bg-zinc-900/50 p-1 outline-none">
+          </div>
+        </div>
+        <button id="generate-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Generate</button>
+      </div>
+      <div class="flex flex-col items-center space-y-4">
+        <div class="rounded border border-zinc-800 bg-zinc-950 p-4">
+          <canvas id="qr-canvas" class="max-w-full" width="256" height="256"></canvas>
+        </div>
+        <button id="download-btn" class="rounded border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200" disabled>Download PNG</button>
+        <p id="error-msg" class="text-xs text-red-400 hidden"></p>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script type="module">
+  import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm';
+
+  const textInput = document.getElementById('qr-text');
+  const sizeInput = document.getElementById('qr-size');
+  const marginInput = document.getElementById('qr-margin');
+  const fgInput = document.getElementById('qr-fg');
+  const bgInput = document.getElementById('qr-bg');
+  const canvas = document.getElementById('qr-canvas');
+  const generateBtn = document.getElementById('generate-btn');
+  const downloadBtn = document.getElementById('download-btn');
+  const errorMsg = document.getElementById('error-msg');
+
+  async function generateQR() {
+    const text = textInput.value.trim();
+    if (!text) {
+      errorMsg.textContent = 'Please enter some text.';
+      errorMsg.classList.remove('hidden');
+      return;
+    }
+    errorMsg.classList.add('hidden');
+    const size = parseInt(sizeInput.value) || 256;
+    const margin = parseInt(marginInput.value) || 2;
+    const fg = fgInput.value;
+    const bg = bgInput.value;
+
+    canvas.width = size;
+    canvas.height = size;
+
+    try {
+      await QRCode.toCanvas(canvas, text, {
+        width: size,
+        margin: margin,
+        color: {
+          dark: fg,
+          light: bg,
+        },
+      });
+      downloadBtn.disabled = false;
+    } catch (err) {
+      errorMsg.textContent = 'Failed to generate QR code.';
+      errorMsg.classList.remove('hidden');
+      downloadBtn.disabled = true;
+    }
+  }
+
+  function downloadPNG() {
+    const link = document.createElement('a');
+    link.download = 'qr-code.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  generateBtn.addEventListener('click', generateQR);
+  downloadBtn.addEventListener('click', downloadPNG);
+
+  // 初始生成一个默认码
+  textInput.value = 'https://example.com';
+  generateQR();
+</script>

@@ -1,0 +1,389 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Snippet Vault // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Snippet Vault</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Keep reusable commands and code fragments close to the workspace.
+    </p>
+  </header>
+
+  <div id="snippet-app" class="mt-6 space-y-6">
+    <!-- 顶部工具列 -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="relative flex-1 max-w-md">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search snippets..."
+          class="w-full rounded border border-zinc-800 bg-zinc-900/50 py-2 pl-9 pr-4 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-emerald-500"
+        />
+        <svg class="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+      <div class="flex gap-2">
+        <button id="export-btn" class="rounded border border-zinc-800 px-3 py-2 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200">
+          Export
+        </button>
+        <label
+          for="import-file"
+          class="cursor-pointer rounded border border-zinc-800 px-3 py-2 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+        >
+          Import
+        </label>
+        <input id="import-file" type="file" accept=".json" class="hidden" />
+        <button id="add-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">
+          + New Snippet
+        </button>
+      </div>
+    </div>
+
+    <!-- 标签过滤列 -->
+    <div id="tag-filters" class="flex flex-wrap gap-2"></div>
+
+    <!-- 片段列表 -->
+    <div id="snippet-list" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+
+    <!-- 空状态 -->
+    <div id="empty-state" class="hidden rounded border border-zinc-800 bg-zinc-900/25 p-8 text-center text-sm text-zinc-500">
+      No snippets yet. Click "+ New Snippet" to add your first one.
+    </div>
+  </div>
+</BaseLayout>
+
+<!-- 表单对话框 (初始隐藏) -->
+<dialog id="snippet-dialog" class="rounded-lg border border-zinc-700 bg-zinc-900 p-6 text-zinc-200 shadow-2xl backdrop:bg-black/60">
+  <form method="dialog" id="snippet-form" class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 id="dialog-title" class="text-lg font-bold text-zinc-100">New Snippet</h3>
+      <button type="button" class="text-zinc-400 hover:text-zinc-200" onclick="this.closest('dialog').close()">&times;</button>
+    </div>
+    <input type="hidden" id="snippet-id" />
+    <div>
+      <label class="mb-1 block text-xs text-zinc-400">Title *</label>
+      <input
+        type="text"
+        id="snippet-title"
+        required
+        class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+      />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs text-zinc-400">Language</label>
+      <select id="snippet-language" class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500">
+        <option value="plaintext">Plain Text</option>
+        <option value="bash">Bash</option>
+        <option value="python">Python</option>
+        <option value="javascript">JavaScript</option>
+        <option value="typescript">TypeScript</option>
+        <option value="json">JSON</option>
+        <option value="html">HTML</option>
+        <option value="css">CSS</option>
+        <option value="sql">SQL</option>
+        <option value="docker">Docker</option>
+        <option value="yaml">YAML</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label class="mb-1 block text-xs text-zinc-400">Tags (comma separated)</label>
+      <input
+        type="text"
+        id="snippet-tags"
+        placeholder="e.g. git, devops"
+        class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+      />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs text-zinc-400">Description</label>
+      <input
+        type="text"
+        id="snippet-desc"
+        class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+      />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs text-zinc-400">Code *</label>
+      <textarea
+        id="snippet-code"
+        required
+        rows="6"
+        class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm font-mono outline-none focus:border-emerald-500"
+      ></textarea>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button type="submit" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  // ---------- 数据模型与存储 ----------
+  const STORAGE_KEY = 'snippet-vault-data';
+
+  function loadSnippets() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  function saveSnippets(snippets) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snippets));
+  }
+
+  // ---------- 状态 ----------
+  let snippets = loadSnippets();
+  let currentFilter = 'all';
+  let searchTerm = '';
+  let editingId = null;
+
+  // ---------- DOM 元素 ----------
+  const listEl = document.getElementById('snippet-list');
+  const emptyEl = document.getElementById('empty-state');
+  const searchInput = document.getElementById('search-input');
+  const tagFiltersEl = document.getElementById('tag-filters');
+  const dialog = document.getElementById('snippet-dialog');
+  const dialogTitle = document.getElementById('dialog-title');
+  const snippetForm = document.getElementById('snippet-form');
+  const snippetId = document.getElementById('snippet-id');
+  const snippetTitle = document.getElementById('snippet-title');
+  const snippetLang = document.getElementById('snippet-language');
+  const snippetTags = document.getElementById('snippet-tags');
+  const snippetDesc = document.getElementById('snippet-desc');
+  const snippetCode = document.getElementById('snippet-code');
+  const addBtn = document.getElementById('add-btn');
+  const exportBtn = document.getElementById('export-btn');
+  const importFile = document.getElementById('import-file');
+
+  // ---------- 辅助函数 ----------
+  function getAllTags() {
+    const tagSet = new Set();
+    snippets.forEach(s => s.tags.forEach(t => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }
+
+  function filterSnippets() {
+    return snippets.filter(s => {
+      const matchTag = currentFilter === 'all' || s.tags.includes(currentFilter);
+      if (!matchTag) return false;
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        s.title.toLowerCase().includes(term) ||
+        s.description.toLowerCase().includes(term) ||
+        s.code.toLowerCase().includes(term)
+      );
+    });
+  }
+
+  function renderTagFilters() {
+    const tags = getAllTags();
+    let html = '<button data-tag="all" class="rounded-full px-3 py-1 text-xs border ' +
+      (currentFilter === 'all' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-zinc-800 text-zinc-500 hover:border-zinc-600') +
+      '">All</button>';
+    tags.forEach(tag => {
+      html += '<button data-tag="' + tag + '" class="rounded-full px-3 py-1 text-xs border ' +
+        (currentFilter === tag ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-zinc-800 text-zinc-500 hover:border-zinc-600') +
+        '">' + tag + '</button>';
+    });
+    tagFiltersEl.innerHTML = html;
+
+    tagFiltersEl.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentFilter = btn.dataset.tag;
+        renderAll();
+      });
+    });
+  }
+
+  function renderList() {
+    const filtered = filterSnippets();
+    if (filtered.length === 0) {
+      listEl.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    // 全部使用字符串拼接，无模板字符串
+    listEl.innerHTML = filtered.map(s => {
+      let tagsHtml = '';
+      s.tags.forEach(t => {
+        tagsHtml += '<span class="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500">#' + escapeHtml(t) + '</span>';
+      });
+
+      return '<div class="rounded border border-zinc-800 bg-zinc-900/25 p-5 transition hover:border-emerald-500/30">' +
+        '<div class="flex items-start justify-between gap-3">' +
+          '<div>' +
+            '<h3 class="text-sm font-bold text-zinc-200">' + escapeHtml(s.title) + '</h3>' +
+            '<div class="mt-1 flex flex-wrap items-center gap-2">' +
+              '<span class="rounded bg-zinc-800 px-2 py-0.5 text-[10px] uppercase text-zinc-400">' + escapeHtml(s.language) + '</span>' +
+              tagsHtml +
+            '</div>' +
+            (s.description ? '<p class="mt-2 text-xs text-zinc-500">' + escapeHtml(s.description) + '</p>' : '') +
+          '</div>' +
+          '<div class="flex gap-1">' +
+            '<button class="copy-btn rounded p-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-emerald-400" title="Copy code" data-id="' + s.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>' +
+            '</button>' +
+            '<button class="edit-btn rounded p-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-emerald-400" title="Edit" data-id="' + s.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>' +
+            '</button>' +
+            '<button class="delete-btn rounded p-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-red-400" title="Delete" data-id="' + s.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<pre class="mt-3 max-h-32 overflow-auto rounded border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300"><code>' + escapeHtml(s.code) + '</code></pre>' +
+      '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => copySnippet(btn.dataset.id));
+    });
+    listEl.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditDialog(btn.dataset.id));
+    });
+    listEl.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteSnippet(btn.dataset.id));
+    });
+  }
+
+  function renderAll() {
+    renderTagFilters();
+    renderList();
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ---------- 操作 ----------
+  function openNewDialog() {
+    editingId = null;
+    dialogTitle.textContent = 'New Snippet';
+    snippetForm.reset();
+    snippetId.value = '';
+    dialog.showModal();
+  }
+
+  function openEditDialog(id) {
+    const snippet = snippets.find(s => s.id === id);
+    if (!snippet) return;
+    editingId = id;
+    dialogTitle.textContent = 'Edit Snippet';
+    snippetId.value = snippet.id;
+    snippetTitle.value = snippet.title;
+    snippetLang.value = snippet.language;
+    snippetTags.value = snippet.tags.join(', ');
+    snippetDesc.value = snippet.description;
+    snippetCode.value = snippet.code;
+    dialog.showModal();
+  }
+
+  function saveSnippet(e) {
+    e.preventDefault();
+    const id = editingId || crypto.randomUUID();
+    const now = new Date().toISOString();
+    const snippet = {
+      id,
+      title: snippetTitle.value.trim(),
+      description: snippetDesc.value.trim(),
+      code: snippetCode.value,
+      language: snippetLang.value,
+      tags: snippetTags.value.split(',').map(t => t.trim()).filter(Boolean),
+      createdAt: editingId ? snippets.find(s => s.id === editingId)?.createdAt || now : now,
+      updatedAt: now,
+    };
+
+    if (editingId) {
+      snippets = snippets.map(s => (s.id === editingId ? snippet : s));
+    } else {
+      snippets.push(snippet);
+    }
+    saveSnippets(snippets);
+    dialog.close();
+    renderAll();
+  }
+
+  function deleteSnippet(id) {
+    if (!confirm('Delete this snippet?')) return;
+    snippets = snippets.filter(s => s.id !== id);
+    saveSnippets(snippets);
+    renderAll();
+  }
+
+  async function copySnippet(id) {
+    const snippet = snippets.find(s => s.id === id);
+    if (!snippet) return;
+    try {
+      await navigator.clipboard.writeText(snippet.code);
+      alert('Copied to clipboard!');
+    } catch {
+      alert('Failed to copy.');
+    }
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(snippets, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'snippets-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (!Array.isArray(data)) throw new Error('Invalid format');
+        if (confirm('Import ' + data.length + ' snippets? This will replace all current data.')) {
+          snippets = data;
+          saveSnippets(snippets);
+          currentFilter = 'all';
+          searchInput.value = '';
+          searchTerm = '';
+          renderAll();
+        }
+      } catch (err) {
+        alert('Invalid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    importFile.value = '';
+  }
+
+  // ---------- 事件绑定 ----------
+  addBtn.addEventListener('click', openNewDialog);
+  snippetForm.addEventListener('submit', saveSnippet);
+  exportBtn.addEventListener('click', exportData);
+  importFile.addEventListener('change', importData);
+  searchInput.addEventListener('input', (e) => {
+    searchTerm = e.target.value;
+    renderList();
+  });
+  dialog.addEventListener('close', () => {
+    editingId = null;
+    snippetForm.reset();
+  });
+
+  renderAll();
+</script>
+
+<style is:global>
+  #snippet-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+</style>

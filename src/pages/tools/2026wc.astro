@@ -1,0 +1,243 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// ===== 將國家代碼轉換為國旗 Emoji 的函式 =====
+function countryCodeToFlag(code: string) {
+  const base = 0x1f1e6 - 65;
+  const upper = code.toUpperCase();
+  return String.fromCodePoint(
+    upper.charCodeAt(0) + base,
+    upper.charCodeAt(1) + base
+  );
+}
+
+// ===== 隊伍名稱與國家代碼對照表 =====
+const flagMap: Record<string, string> = {
+  '墨西哥': 'MX', '阿根廷': 'AR', '尼日利亞': 'NG', '捷克': 'CZ',
+  '加拿大': 'CA', '英格蘭': 'GB', '瑞士': 'CH', '波黑': 'BA',
+  '巴西': 'BR', '摩洛哥': 'MA', '蘇格蘭': 'GB', '海地': 'HT',
+  '美國': 'US', '土耳其': 'TR', '澳洲': 'AU', '巴拉圭': 'PY',
+  '西班牙': 'ES', '德國': 'DE', '日本': 'JP', '哥斯達黎加': 'CR',
+  '荷蘭': 'NL', '哥倫比亞': 'CO', '瑞典': 'SE', '突尼斯': 'TN',
+  '葡萄牙': 'PT', '烏拉圭': 'UY', '埃及': 'EG', '新西蘭': 'NZ',
+  '比利時': 'BE', '克羅地亞': 'HR', '伊朗': 'IR', '韓國': 'KR',
+  '法國': 'FR', '挪威': 'NO', '塞內加爾': 'SN', '伊拉克': 'IQ',
+  '意大利': 'IT', '奧地利': 'AT', '阿爾及利亞': 'DZ', '約旦': 'JO',
+  '厄瓜多爾': 'EC', '科特迪瓦': 'CI', '烏茲別克': 'UZ', '剛果民主共和國': 'CD',
+  '俄羅斯': 'RU', '匈牙利': 'HU', '阿聯酋': 'AE', '南非': 'ZA',
+  '卡塔爾': 'QA', '佛得角': 'CV', '庫拉索': 'CW', '沙特阿拉伯': 'SA',
+  '加納': 'GH', '巴拿馬': 'PA',
+};
+
+// ===== 輔助函式：取得包含國旗的隊伍顯示名稱 =====
+function getTeamDisplay(name: string) {
+  if (!name) return '—';
+  const code = flagMap[name];
+  if (!code) return name;
+  const flag = countryCodeToFlag(code);
+  return flag + ' ' + name;
+}
+
+// ===== 小組分佈 =====
+const groups = [
+  { name: 'A 組', teams: ['墨西哥', '阿根廷', '尼日利亞', '捷克'] },
+  { name: 'B 組', teams: ['加拿大', '英格蘭', '瑞士', '波黑'] },
+  { name: 'C 組', teams: ['巴西', '摩洛哥', '蘇格蘭', '海地'] },
+  { name: 'D 組', teams: ['美國', '土耳其', '澳洲', '巴拉圭'] },
+  { name: 'E 組', teams: ['西班牙', '德國', '日本', '哥斯達黎加'] },
+  { name: 'F 組', teams: ['荷蘭', '哥倫比亞', '瑞典', '突尼斯'] },
+  { name: 'G 組', teams: ['葡萄牙', '烏拉圭', '埃及', '新西蘭'] },
+  { name: 'H 組', teams: ['比利時', '克羅地亞', '伊朗', '韓國'] },
+  { name: 'I 組', teams: ['法國', '挪威', '塞內加爾', '伊拉克'] },
+  { name: 'J 組', teams: ['意大利', '奧地利', '阿爾及利亞', '約旦'] },
+  { name: 'K 組', teams: ['厄瓜多爾', '科特迪瓦', '烏茲別克', '剛果民主共和國'] },
+  { name: 'L 組', teams: ['俄羅斯', '匈牙利', '阿聯酋', '南非'] },
+];
+
+// ===== 賽程資料 =====
+const matches = [
+  { date: '2026/06/12', time: '03:00', stage: '小組賽', home: '墨西哥', away: '南非' },
+  { date: '2026/06/12', time: '10:00', stage: '小組賽', home: '韓國', away: '捷克' },
+  { date: '2026/06/13', time: '03:00', stage: '小組賽', home: '加拿大', away: '波黑' },
+  { date: '2026/06/13', time: '09:00', stage: '小組賽', home: '美國', away: '巴拉圭' },
+  { date: '2026/06/14', time: '03:00', stage: '小組賽', home: '卡塔爾', away: '瑞士' },
+  { date: '2026/06/14', time: '06:00', stage: '小組賽', home: '巴西', away: '摩洛哥' },
+  { date: '2026/06/14', time: '09:00', stage: '小組賽', home: '海地', away: '蘇格蘭' },
+  { date: '2026/06/14', time: '12:00', stage: '小組賽', home: '澳洲', away: '土耳其' },
+  { date: '2026/06/15', time: '01:00', stage: '小組賽', home: '德國', away: '庫拉索' },
+  { date: '2026/06/15', time: '04:00', stage: '小組賽', home: '荷蘭', away: '日本' },
+  { date: '2026/06/15', time: '07:00', stage: '小組賽', home: '科特迪瓦', away: '厄瓜多爾' },
+  { date: '2026/06/15', time: '10:00', stage: '小組賽', home: '瑞典', away: '突尼斯' },
+  { date: '2026/06/16', time: '00:00', stage: '小組賽', home: '西班牙', away: '佛得角' },
+  { date: '2026/06/16', time: '03:00', stage: '小組賽', home: '比利時', away: '埃及' },
+  { date: '2026/06/16', time: '06:00', stage: '小組賽', home: '沙特阿拉伯', away: '烏拉圭' },
+  { date: '2026/06/16', time: '09:00', stage: '小組賽', home: '伊朗', away: '新西蘭' },
+  { date: '2026/06/17', time: '03:00', stage: '小組賽', home: '法國', away: '塞內加爾' },
+  { date: '2026/06/17', time: '06:00', stage: '小組賽', home: '伊拉克', away: '挪威' },
+  { date: '2026/06/17', time: '09:00', stage: '小組賽', home: '阿根廷', away: '阿爾及利亞' },
+  { date: '2026/06/17', time: '12:00', stage: '小組賽', home: '奧地利', away: '約旦' },
+  { date: '2026/06/18', time: '01:00', stage: '小組賽', home: '葡萄牙', away: '剛果民主共和國' },
+  { date: '2026/06/18', time: '04:00', stage: '小組賽', home: '英格蘭', away: '克羅地亞' },
+  { date: '2026/06/18', time: '07:00', stage: '小組賽', home: '加納', away: '巴拿馬' },
+  { date: '2026/06/18', time: '10:00', stage: '小組賽', home: '烏茲別克', away: '哥倫比亞' },
+  { date: '2026/06/19', time: '00:00', stage: '小組賽', home: '捷克', away: '南非' },
+  { date: '2026/06/19', time: '03:00', stage: '小組賽', home: '瑞士', away: '波黑' },
+  { date: '2026/06/19', time: '06:00', stage: '小組賽', home: '加拿大', away: '卡塔爾' },
+  { date: '2026/06/19', time: '09:00', stage: '小組賽', home: '墨西哥', away: '韓國' },
+  { date: '2026/06/20', time: '03:00', stage: '小組賽', home: '美國', away: '澳洲' },
+  { date: '2026/06/20', time: '06:00', stage: '小組賽', home: '蘇格蘭', away: '摩洛哥' },
+  { date: '2026/06/20', time: '08:30', stage: '小組賽', home: '巴西', away: '海地' },
+  { date: '2026/06/20', time: '11:00', stage: '小組賽', home: '土耳其', away: '巴拉圭' },
+  { date: '2026/06/21', time: '01:00', stage: '小組賽', home: '荷蘭', away: '瑞典' },
+  { date: '2026/06/21', time: '04:00', stage: '小組賽', home: '德國', away: '科特迪瓦' },
+  { date: '2026/06/21', time: '08:00', stage: '小組賽', home: '厄瓜多爾', away: '庫拉索' },
+  { date: '2026/06/21', time: '12:00', stage: '小組賽', home: '突尼斯', away: '日本' },
+  { date: '2026/06/22', time: '00:00', stage: '小組賽', home: '西班牙', away: '沙特阿拉伯' },
+  { date: '2026/06/22', time: '03:00', stage: '小組賽', home: '比利時', away: '伊朗' },
+  { date: '2026/06/22', time: '06:00', stage: '小組賽', home: '烏拉圭', away: '佛得角' },
+  { date: '2026/06/22', time: '09:00', stage: '小組賽', home: '新西蘭', away: '埃及' },
+  { date: '2026/06/23', time: '01:00', stage: '小組賽', home: '阿根廷', away: '奧地利' },
+  { date: '2026/06/23', time: '05:00', stage: '小組賽', home: '法國', away: '伊拉克' },
+  { date: '2026/06/23', time: '08:00', stage: '小組賽', home: '挪威', away: '塞內加爾' },
+  { date: '2026/06/23', time: '11:00', stage: '小組賽', home: '約旦', away: '阿爾及利亞' },
+  { date: '2026/06/24', time: '01:00', stage: '小組賽', home: '葡萄牙', away: '烏茲別克' },
+  { date: '2026/06/24', time: '04:00', stage: '小組賽', home: '英格蘭', away: '加納' },
+  { date: '2026/06/24', time: '07:00', stage: '小組賽', home: '巴拿馬', away: '克羅地亞' },
+  { date: '2026/06/24', time: '10:00', stage: '小組賽', home: '哥倫比亞', away: '剛果民主共和國' },
+  { date: '2026/06/25', time: '03:00', stage: '小組賽', home: '瑞士', away: '加拿大' },
+  { date: '2026/06/25', time: '03:00', stage: '小組賽', home: '波黑', away: '卡塔爾' },
+  { date: '2026/06/25', time: '06:00', stage: '小組賽', home: '摩洛哥', away: '海地' },
+  { date: '2026/06/25', time: '06:00', stage: '小組賽', home: '蘇格蘭', away: '巴西' },
+  { date: '2026/06/25', time: '09:00', stage: '小組賽', home: '捷克', away: '墨西哥' },
+  { date: '2026/06/25', time: '09:00', stage: '小組賽', home: '南非', away: '韓國' },
+  { date: '2026/06/26', time: '04:00', stage: '小組賽', home: '厄瓜多爾', away: '德國' },
+  { date: '2026/06/26', time: '04:00', stage: '小組賽', home: '庫拉索', away: '科特迪瓦' },
+  { date: '2026/06/26', time: '07:00', stage: '小組賽', home: '突尼斯', away: '荷蘭' },
+  { date: '2026/06/26', time: '07:00', stage: '小組賽', home: '日本', away: '瑞典' },
+  { date: '2026/06/26', time: '10:00', stage: '小組賽', home: '土耳其', away: '美國' },
+  { date: '2026/06/26', time: '10:00', stage: '小組賽', home: '巴拉圭', away: '澳洲' },
+  { date: '2026/06/27', time: '03:00', stage: '小組賽', home: '挪威', away: '法國' },
+  { date: '2026/06/27', time: '03:00', stage: '小組賽', home: '塞內加爾', away: '伊拉克' },
+  { date: '2026/06/27', time: '08:00', stage: '小組賽', home: '烏拉圭', away: '西班牙' },
+  { date: '2026/06/27', time: '08:00', stage: '小組賽', home: '佛得角', away: '沙特阿拉伯' },
+  { date: '2026/06/27', time: '11:00', stage: '小組賽', home: '新西蘭', away: '比利時' },
+  { date: '2026/06/27', time: '11:00', stage: '小組賽', home: '埃及', away: '伊朗' },
+  { date: '2026/06/28', time: '05:00', stage: '小組賽', home: '巴拿馬', away: '英格蘭' },
+  { date: '2026/06/28', time: '05:00', stage: '小組賽', home: '克羅地亞', away: '加納' },
+  { date: '2026/06/28', time: '07:30', stage: '小組賽', home: '哥倫比亞', away: '葡萄牙' },
+  { date: '2026/06/28', time: '07:30', stage: '小組賽', home: '剛果民主共和國', away: '烏茲別克' },
+  { date: '2026/06/28', time: '10:00', stage: '小組賽', home: '約旦', away: '阿根廷' },
+  { date: '2026/06/28', time: '10:00', stage: '小組賽', home: '阿爾及利亞', away: '奧地利' },
+  // 淘汰賽
+  { date: '2026/06/29', time: '03:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/06/30', time: '01:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/06/30', time: '04:30', stage: '32強賽', home: '', away: '' },
+  { date: '2026/06/30', time: '09:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/01', time: '01:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/01', time: '05:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/01', time: '09:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/02', time: '00:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/02', time: '04:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/02', time: '08:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/03', time: '03:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/03', time: '07:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/03', time: '11:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/04', time: '02:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/04', time: '06:00', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/04', time: '09:30', stage: '32強賽', home: '', away: '' },
+  { date: '2026/07/05', time: '01:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/05', time: '05:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/06', time: '04:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/06', time: '08:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/07', time: '03:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/07', time: '08:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/08', time: '00:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/08', time: '04:00', stage: '16強賽', home: '', away: '' },
+  { date: '2026/07/10', time: '04:00', stage: '8強賽', home: '', away: '' },
+  { date: '2026/07/11', time: '03:00', stage: '8強賽', home: '', away: '' },
+  { date: '2026/07/12', time: '05:00', stage: '8強賽', home: '', away: '' },
+  { date: '2026/07/12', time: '09:00', stage: '8強賽', home: '', away: '' },
+  { date: '2026/07/15', time: '03:00', stage: '半決賽', home: '', away: '' },
+  { date: '2026/07/16', time: '03:00', stage: '半決賽', home: '', away: '' },
+  { date: '2026/07/19', time: '05:00', stage: '季軍賽', home: '', away: '' },
+  { date: '2026/07/20', time: '03:00', stage: '決賽', home: '', away: '' },
+];
+---
+
+<BaseLayout title="2026 World Cup // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">2026 世界盃對陣表</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      FIFA World Cup 2026™ 完整賽程與小組分佈。<br />
+      <span class="text-xs text-zinc-600">* 賽程資料僅供參考，實際以 FIFA 官方為準。</span>
+    </p>
+  </header>
+
+  <!-- 小組賽分組 -->
+  <section class="mt-8">
+    <h3 class="text-lg font-bold text-zinc-200 mb-4">小組賽分組</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      {groups.map((group) => (
+        <div class="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 hover:border-emerald-500/50 transition">
+          <div class="text-sm font-bold text-emerald-400 mb-2">{group.name}</div>
+          <ul class="space-y-1">
+            {group.teams.map((team) => (
+              <li class="text-xs text-zinc-400">{getTeamDisplay(team)}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- 賽程表 -->
+  <section class="mt-12">
+    <h3 class="text-lg font-bold text-zinc-200 mb-4">全部賽程</h3>
+    <div class="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950/50">
+      <table class="w-full text-xs sm:text-sm">
+        <thead class="border-b border-zinc-800 bg-zinc-900/80 text-left">
+          <tr>
+            <th class="py-3 px-4 font-medium text-zinc-400 whitespace-nowrap">日期</th>
+            <th class="py-3 px-4 font-medium text-zinc-400 whitespace-nowrap">北京時間</th>
+            <th class="py-3 px-4 font-medium text-zinc-400 whitespace-nowrap">階段</th>
+            <th class="py-3 px-4 font-medium text-zinc-400 whitespace-nowrap text-right">主隊</th>
+            <th class="py-3 px-2 text-center font-medium text-zinc-600">VS</th>
+            <th class="py-3 px-4 font-medium text-zinc-400 whitespace-nowrap">客隊</th>
+            <th class="py-3 px-4 font-medium text-zinc-400 whitespace-nowrap">狀態</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-zinc-800">
+          {matches.map((m) => {
+            let stageColor = '';
+            if (m.stage === '小組賽') stageColor = 'bg-blue-900/40 text-blue-300 border-blue-700';
+            else if (m.stage === '32強賽') stageColor = 'bg-purple-900/40 text-purple-300 border-purple-700';
+            else if (m.stage === '16強賽') stageColor = 'bg-indigo-900/40 text-indigo-300 border-indigo-700';
+            else if (m.stage === '8強賽') stageColor = 'bg-orange-900/40 text-orange-300 border-orange-700';
+            else if (m.stage === '半決賽') stageColor = 'bg-yellow-900/40 text-yellow-300 border-yellow-700';
+            else if (m.stage === '季軍賽' || m.stage === '決賽') stageColor = 'bg-emerald-900/40 text-emerald-300 border-emerald-700';
+
+            return (
+              <tr class="hover:bg-zinc-900/50 transition">
+                <td class="py-3 px-4 text-zinc-400 font-mono whitespace-nowrap">{m.date}</td>
+                <td class="py-3 px-4 text-zinc-300 font-mono">{m.time}</td>
+                <td class="py-3 px-4">
+                  <span class={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${stageColor}`}>
+                    {m.stage}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-right text-zinc-300 whitespace-nowrap">{getTeamDisplay(m.home)}</td>
+                <td class="py-3 px-2 text-center text-zinc-600">VS</td>
+                <td class="py-3 px-4 text-zinc-300 whitespace-nowrap">{getTeamDisplay(m.away)}</td>
+                <td class="py-3 px-4">
+                  <span class="text-[10px] text-zinc-600 font-medium">未開始</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-zinc-600">* 淘汰賽階段對陣隊伍待小組賽結束後產生。</p>
+  </section>
+</BaseLayout>

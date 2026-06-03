@@ -1,0 +1,203 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Color Playground // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Color Playground</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Convert, explore, and test colors — all locally in your browser.
+    </p>
+  </header>
+
+  <div id="color-app" class="mt-6 space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Pick a color</label>
+          <input type="color" id="color-picker" value="#10b981" class="h-10 w-full cursor-pointer rounded border border-zinc-800 bg-zinc-900/50 p-1 outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">HEX</label>
+            <input type="text" id="hex-input" value="#10b981" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">RGB</label>
+            <input type="text" id="rgb-input" value="rgb(16, 185, 129)" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">HSL</label>
+            <input type="text" id="hsl-input" value="hsl(160, 84%, 39%)" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">HWB</label>
+            <input type="text" id="hwb-input" value="hwb(160 6% 27%)" class="w-full rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="rounded border border-zinc-800 bg-zinc-950 p-4 text-center">
+          <p class="text-xs text-zinc-500 mb-2">Preview</p>
+          <div id="color-preview" class="mx-auto h-24 w-full max-w-xs rounded-lg border border-zinc-700 shadow-2xl transition-colors duration-200" style="background-color: #10b981;"></div>
+          <p class="mt-3 text-xs text-zinc-400">Contrast against white: <span id="contrast-ratio" class="text-emerald-400 font-bold">2.6</span></p>
+          <p class="text-xs text-zinc-400">WCAG AA: <span id="wcag-aa" class="font-bold">Fail</span></p>
+        </div>
+        <div>
+          <button id="generate-palette" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">Generate Palette</button>
+        </div>
+        <div id="palette-swatches" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  // ---------- 元素 ----------
+  const picker = document.getElementById('color-picker');
+  const hexInput = document.getElementById('hex-input');
+  const rgbInput = document.getElementById('rgb-input');
+  const hslInput = document.getElementById('hsl-input');
+  const hwbInput = document.getElementById('hwb-input');
+  const preview = document.getElementById('color-preview');
+  const contrastRatio = document.getElementById('contrast-ratio');
+  const wcagAA = document.getElementById('wcag-aa');
+  const paletteBtn = document.getElementById('generate-palette');
+  const paletteContainer = document.getElementById('palette-swatches');
+
+  // ---------- 辅助函数 ----------
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100)
+    };
+  }
+
+  function hslToRgb(h, s, l) {
+    s /= 100; l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => {
+      const k = (n + h / 30) % 12;
+      return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    };
+    return {
+      r: Math.round(f(0) * 255),
+      g: Math.round(f(8) * 255),
+      b: Math.round(f(4) * 255)
+    };
+  }
+
+  function rgbToHwb(r, g, b) {
+    const { h } = rgbToHsl(r, g, b);
+    const w = Math.min(r, g, b) / 255;
+    const bk = 1 - Math.max(r, g, b) / 255;
+    return { h, w: Math.round(w * 100), b: Math.round(bk * 100) };
+  }
+
+  function getLuminance(r, g, b) {
+    const [rs, gs, bs] = [r, g, b].map(c => {
+      c = c / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+  }
+
+  function getContrast(rgb1, rgb2) {
+    const l1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+    const l2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return ((lighter + 0.05) / (darker + 0.05)).toFixed(1);
+  }
+
+  function updateFromHex(hex) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return;
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    const hwb = rgbToHwb(rgb.r, rgb.g, rgb.b);
+    hexInput.value = hex.startsWith('#') ? hex : '#' + hex;
+    rgbInput.value = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
+    hslInput.value = 'hsl(' + hsl.h + ', ' + hsl.s + '%, ' + hsl.l + '%)';
+    hwbInput.value = 'hwb(' + hwb.h + ' ' + hwb.w + '% ' + hwb.b + '%)';
+    preview.style.backgroundColor = hexInput.value;
+    const contrast = getContrast(rgb, { r: 255, g: 255, b: 255 });
+    contrastRatio.textContent = contrast;
+    wcagAA.textContent = contrast >= 4.5 ? 'Pass' : 'Fail';
+    wcagAA.className = contrast >= 4.5 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold';
+  }
+
+  function updateFromRgb(rgbStr) {
+    const match = rgbStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/i);
+    if (!match) return;
+    const rgb = { r: +match[1], g: +match[2], b: +match[3] };
+    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    picker.value = hex;
+    updateFromHex(hex);
+  }
+
+  function updateFromHsl(hslStr) {
+    const match = hslStr.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/i);
+    if (!match) return;
+    const h = +match[1], s = +match[2], l = +match[3];
+    const rgb = hslToRgb(h, s, l);
+    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    picker.value = hex;
+    updateFromHex(hex);
+  }
+
+  // ---------- 事件监听 ----------
+  picker.addEventListener('input', (e) => updateFromHex(e.target.value));
+  hexInput.addEventListener('input', (e) => { updateFromHex(e.target.value); picker.value = e.target.value; });
+  rgbInput.addEventListener('input', (e) => updateFromRgb(e.target.value));
+  hslInput.addEventListener('input', (e) => updateFromHsl(e.target.value));
+
+  paletteBtn.addEventListener('click', () => {
+    const currentRgb = hexToRgb(picker.value);
+    if (!currentRgb) return;
+    const palettes = [];
+    const hsl = rgbToHsl(currentRgb.r, currentRgb.g, currentRgb.b);
+    const compH = (hsl.h + 180) % 360;
+    palettes.push(rgbToHex(...Object.values(hslToRgb(compH, hsl.s, hsl.l))));
+    palettes.push(rgbToHex(...Object.values(hslToRgb((hsl.h + 30) % 360, hsl.s, hsl.l))));
+    palettes.push(rgbToHex(...Object.values(hslToRgb((hsl.h - 30 + 360) % 360, hsl.s, hsl.l))));
+    palettes.push(rgbToHex(...Object.values(hslToRgb((hsl.h + 120) % 360, hsl.s, hsl.l))));
+    palettes.push(rgbToHex(...Object.values(hslToRgb((hsl.h + 240) % 360, hsl.s, hsl.l))));
+
+    // 使用字符串拼接，无模板字符串
+    paletteContainer.innerHTML = palettes.map(c => {
+      return '<div class="w-10 h-10 rounded border border-zinc-700 cursor-pointer" style="background:' + c + '" title="' + c + '" onclick="navigator.clipboard.writeText(\'' + c + '\')"></div>';
+    }).join('');
+  });
+
+  // 初始
+  updateFromHex('#10b981');
+</script>
