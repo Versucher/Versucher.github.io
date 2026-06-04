@@ -1,16 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 
+// 繁體中文註釋：定義 AI 實驗項目列表，含標題、描述與可選鏈接
 const experiments = [
-  ['Prompt lab', 'Compare prompts and preserve versions that produce stable output.'],
-  ['Agent tasks', 'Track small coding-agent workflows from request to verification.'],
-  ['Model notes', 'Keep practical observations about latency, quality, and fit.'],
+  { title: 'AI Chat', desc: '通用對話介面，支援 OpenAI 相容 API。', url: '/ai/chat' },
+  { title: 'Prompt lab', desc: 'Compare prompts and preserve versions that produce stable output.', url: null },
+  { title: 'Agent tasks', desc: 'Track small coding-agent workflows from request to verification.', url: null },
+  { title: 'Model notes', desc: 'Keep practical observations about latency, quality, and fit.', url: null },
 ];
 ---
 
 <BaseLayout title="0x04 // AI Apps">
   <header class="border-b border-zinc-800 pb-4">
-    <div class="text-xs text-emerald-400">// AI_APPLICATIONS</div>
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <div class="mt-2 text-xs text-emerald-400">// AI_APPLICATIONS</div>
     <h2 class="mt-2 text-2xl font-bold text-zinc-100">&gt;_ AI Terminal</h2>
     <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
       A workspace for practical AI experiments, prompt notes, and interface ideas.
@@ -23,11 +26,23 @@ const experiments = [
   </div>
 
   <div class="grid gap-4 md:grid-cols-3">
-    {experiments.map(([title, body]) => (
-      <section class="rounded border border-zinc-800 bg-zinc-900/25 p-5">
-        <h3 class="text-sm font-bold text-zinc-200">{title}</h3>
-        <p class="mt-3 text-xs leading-5 text-zinc-500">{body}</p>
-      </section>
-    ))}
+    {experiments.map((item) => {
+      const isReady = !!item.url;
+      const Tag = isReady ? 'a' : 'section';
+      return (
+        <Tag
+          href={item.url || undefined}
+          class={`rounded border border-zinc-800 bg-zinc-900/25 p-5 ${
+            isReady ? 'transition hover:border-emerald-500/50 hover:bg-zinc-900/45' : ''
+          }`}
+        >
+          <h3 class="text-sm font-bold text-zinc-200">{item.title}</h3>
+          <p class="mt-3 text-xs leading-5 text-zinc-500">{item.desc}</p>
+          {isReady && (
+            <div class="mt-4 text-[10px] uppercase tracking-wide text-emerald-400">open tool →</div>
+          )}
+        </Tag>
+      );
+    })}
   </div>
 </BaseLayout>

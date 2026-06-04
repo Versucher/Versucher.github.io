@@ -1,0 +1,142 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Meine AI Chat // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/meineai" class="text-xs text-purple-400 transition hover:text-purple-300">&lt; Back to Meine AI</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">Meine AI Chat</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      Personal chat with pre-configured keys. Model and provider are managed in Cloudflare Worker.
+    </p>
+  </header>
+
+  <div id="chat-app" class="mt-6 space-y-4">
+    <!-- 對話區域 -->
+    <div id="chat-messages" class="rounded border border-zinc-800 bg-zinc-950 p-4 space-y-3 overflow-y-auto min-h-[400px] max-h-[600px]">
+      <div class="text-center text-xs text-zinc-600">Send a message to start</div>
+    </div>
+
+    <!-- 輸入區域 -->
+    <div class="flex gap-2">
+      <textarea
+        id="user-input"
+        rows="2"
+        placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+        class="flex-1 rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-purple-500 resize-none"
+      ></textarea>
+      <button id="send-btn" class="self-end rounded bg-purple-600 px-6 py-2 text-sm font-bold text-white hover:bg-purple-500 disabled:opacity-50">
+        Send
+      </button>
+    </div>
+    <button id="clear-chat-btn" class="text-xs text-zinc-500 hover:text-zinc-300">Clear chat</button>
+  </div>
+</BaseLayout>
+
+<script>
+  // ===== 配置：你的 Cloudflare Worker 端點（請改為實際網址） =====
+  const WORKER_URL = 'https://helllo.richard-i-2000.workers.dev';
+
+  // ===== DOM 元素 =====
+  const chatMessages = document.getElementById('chat-messages');
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const clearChatBtn = document.getElementById('clear-chat-btn');
+
+  // ===== 狀態 =====
+  let conversation = [];
+
+  // ===== 渲染訊息 =====
+  function renderMessages() {
+    if (conversation.length === 0) {
+      chatMessages.innerHTML = '<div class="text-center text-xs text-zinc-600">Send a message to start</div>';
+      return;
+    }
+    chatMessages.innerHTML = conversation.map(msg => {
+      if (msg.role === 'user') {
+        return '<div class="flex justify-end"><div class="max-w-[75%] rounded-lg bg-purple-900/40 border border-purple-800 px-4 py-2 text-sm text-zinc-200">' + escapeHtml(msg.content) + '</div></div>';
+      } else if (msg.role === 'assistant') {
+        return '<div class="flex justify-start"><div class="max-w-[75%] rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 whitespace-pre-wrap">' + escapeHtml(msg.content) + '</div></div>';
+      } else if (msg.role === 'error') {
+        return '<div class="flex justify-center"><div class="max-w-[75%] rounded-lg bg-red-900/30 border border-red-800 px-4 py-2 text-sm text-red-400">' + escapeHtml(msg.content) + '</div></div>';
+      }
+    }).join('');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // ===== 輔助函式 =====
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ===== 發送訊息 =====
+  async function sendMessage() {
+    const content = userInput.value.trim();
+    if (!content) return;
+
+    conversation.push({ role: 'user', content });
+    renderMessages();
+    userInput.value = '';
+    sendBtn.disabled = true;
+
+    // 顯示「思考中」
+    conversation.push({ role: 'assistant', content: 'Thinking...' });
+    renderMessages();
+
+    try {
+      const messages = conversation
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-20)
+        .map(({ role, content }) => ({ role, content }));
+
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }), // 只送 messages，模型由 Worker 決定
+      });
+
+      conversation.pop(); // 移除 "Thinking..."
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || 'HTTP ' + response.status);
+      }
+
+      const data = await response.json();
+      const reply = data.choices[0].message.content;
+      conversation.push({ role: 'assistant', content: reply });
+    } catch (err) {
+      conversation.pop();
+      conversation.push({ role: 'error', content: 'Error: ' + err.message });
+    }
+
+    renderMessages();
+    sendBtn.disabled = false;
+    userInput.focus();
+  }
+
+  // ===== 清除對話 =====
+  function clearChat() {
+    if (confirm('Clear conversation?')) {
+      conversation = [];
+      renderMessages();
+    }
+  }
+
+  // ===== 事件監聽 =====
+  sendBtn.addEventListener('click', sendMessage);
+  clearChatBtn.addEventListener('click', clearChat);
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // ===== 初始渲染 =====
+  renderMessages();
+</script>

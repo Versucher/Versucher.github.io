@@ -1,0 +1,240 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="AI Chat // Tools">
+  <header class="border-b border-zinc-800 pb-4">
+    <a href="/tools" class="text-xs text-emerald-400 transition hover:text-emerald-300">&lt; Back to tools</a>
+    <h2 class="mt-2 text-2xl font-bold text-zinc-100">AI Chat</h2>
+    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+      本機 AI 對話測試工具。請自行輸入 API Key，僅存於瀏覽器中。
+    </p>
+  </header>
+
+  <div id="chat-app" class="mt-6 space-y-4">
+    <!-- API Key 與設定列 -->
+    <div class="flex flex-wrap items-end gap-3 rounded border border-zinc-800 bg-zinc-900/40 p-4">
+      <div class="flex-1 min-w-[200px]">
+        <label for="api-key" class="block text-xs text-zinc-400 mb-1">API Key</label>
+        <input
+          type="password"
+          id="api-key"
+          placeholder="sk-..."
+          class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+        />
+      </div>
+      <div>
+        <label for="api-base" class="block text-xs text-zinc-400 mb-1">Base URL（可選）</label>
+        <input
+          type="text"
+          id="api-base"
+          placeholder="https://api.openai.com/v1"
+          class="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+        />
+      </div>
+      <div>
+        <label for="model-select" class="block text-xs text-zinc-400 mb-1">模型</label>
+        <input
+          type="text"
+          id="model-select"
+          value="gpt-4o-mini"
+          class="w-32 rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+        />
+      </div>
+      <button id="save-key-btn" class="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">
+        儲存
+      </button>
+      <span id="key-status" class="text-xs text-zinc-500"></span>
+    </div>
+
+    <!-- 對話區塊 -->
+    <div
+      id="chat-messages"
+      class="rounded border border-zinc-800 bg-zinc-950 p-4 space-y-3 overflow-y-auto min-h-[400px] max-h-[600px]"
+    >
+      <div class="text-center text-xs text-zinc-600">輸入訊息開始對話</div>
+    </div>
+
+    <!-- 輸入列 -->
+    <div class="flex gap-2">
+      <textarea
+        id="user-input"
+        rows="2"
+        placeholder="輸入訊息... (Enter 送出，Shift+Enter 換行)"
+        class="flex-1 rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500 resize-none"
+      ></textarea>
+      <button id="send-btn" class="self-end rounded bg-emerald-600 px-6 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
+        送出
+      </button>
+    </div>
+    <button id="clear-chat-btn" class="text-xs text-zinc-500 hover:text-zinc-300">清除對話</button>
+  </div>
+</BaseLayout>
+
+<script>
+  // ===== DOM 元素 =====
+  const apiKeyInput = document.getElementById('api-key');
+  const apiBaseInput = document.getElementById('api-base');
+  const modelInput = document.getElementById('model-select');
+  const saveKeyBtn = document.getElementById('save-key-btn');
+  const keyStatus = document.getElementById('key-status');
+  const chatMessages = document.getElementById('chat-messages');
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const clearChatBtn = document.getElementById('clear-chat-btn');
+
+  // ===== 狀態 =====
+  let conversation = []; // 對話歷史（存於記憶體）
+
+  // ===== 初始化：載入已儲存的設定 =====
+  function loadSettings() {
+    const key = localStorage.getItem('ai_api_key');
+    const base = localStorage.getItem('ai_api_base');
+    const model = localStorage.getItem('ai_model');
+    if (key) apiKeyInput.value = key;
+    if (base) apiBaseInput.value = base;
+    else apiBaseInput.value = 'https://api.openai.com/v1';
+    if (model) modelInput.value = model;
+    else modelInput.value = 'gpt-4o-mini';
+    updateKeyStatus();
+  }
+
+  // ===== 儲存設定 =====
+  function saveSettings() {
+    const key = apiKeyInput.value.trim();
+    const base = apiBaseInput.value.trim() || 'https://api.openai.com/v1';
+    const model = modelInput.value.trim() || 'gpt-4o-mini';
+    if (key) localStorage.setItem('ai_api_key', key);
+    else localStorage.removeItem('ai_api_key');
+    localStorage.setItem('ai_api_base', base);
+    localStorage.setItem('ai_model', model);
+    updateKeyStatus();
+  }
+
+  // ===== 更新狀態顯示 =====
+  function updateKeyStatus() {
+    const key = localStorage.getItem('ai_api_key');
+    if (key) {
+      keyStatus.textContent = '已儲存 ' + key.slice(0, 5) + '...';
+      keyStatus.className = 'text-xs text-emerald-400';
+    } else {
+      keyStatus.textContent = '未設定';
+      keyStatus.className = 'text-xs text-zinc-500';
+    }
+  }
+
+  // ===== 渲染訊息 =====
+  function renderMessages() {
+    if (conversation.length === 0) {
+      chatMessages.innerHTML = '<div class="text-center text-xs text-zinc-600">輸入訊息開始對話</div>';
+      return;
+    }
+    chatMessages.innerHTML = conversation.map(msg => {
+      if (msg.role === 'user') {
+        return '<div class="flex justify-end"><div class="max-w-[75%] rounded-lg bg-emerald-900/40 border border-emerald-800 px-4 py-2 text-sm text-zinc-200">' + escapeHtml(msg.content) + '</div></div>';
+      } else if (msg.role === 'assistant') {
+        return '<div class="flex justify-start"><div class="max-w-[75%] rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 whitespace-pre-wrap">' + escapeHtml(msg.content) + '</div></div>';
+      } else if (msg.role === 'error') {
+        return '<div class="flex justify-center"><div class="max-w-[75%] rounded-lg bg-red-900/30 border border-red-800 px-4 py-2 text-sm text-red-400">' + escapeHtml(msg.content) + '</div></div>';
+      }
+    }).join('');
+    // 自動捲到底部
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // ===== 輔助：轉義 HTML =====
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ===== 發送訊息 =====
+  async function sendMessage() {
+    const content = userInput.value.trim();
+    if (!content) return;
+
+    const apiKey = localStorage.getItem('ai_api_key');
+    if (!apiKey) {
+      alert('請先輸入並儲存 API Key。');
+      return;
+    }
+
+    // 添加到對話歷史
+    conversation.push({ role: 'user', content });
+    renderMessages();
+    userInput.value = '';
+    sendBtn.disabled = true;
+
+    // 顯示載入中
+    conversation.push({ role: 'assistant', content: '思考中...' });
+    renderMessages();
+
+    const apiBase = localStorage.getItem('ai_api_base') || 'https://api.openai.com/v1';
+    const model = localStorage.getItem('ai_model') || 'gpt-4o-mini';
+
+    try {
+      // 僅傳送最近 20 則訊息（避免上下文過長）
+      const messages = conversation
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-20)
+        .map(({ role, content }) => ({ role, content }));
+
+      const response = await fetch(`${apiBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.7,
+        }),
+      });
+
+      // 移除「思考中」
+      conversation.pop();
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const reply = data.choices[0].message.content;
+      conversation.push({ role: 'assistant', content: reply });
+    } catch (err) {
+      conversation.pop(); // 移除「思考中」
+      conversation.push({ role: 'error', content: '錯誤：' + err.message });
+    }
+
+    renderMessages();
+    sendBtn.disabled = false;
+    userInput.focus();
+  }
+
+  // ===== 清除對話 =====
+  function clearChat() {
+    if (confirm('確定要清除對話歷史嗎？')) {
+      conversation = [];
+      renderMessages();
+    }
+  }
+
+  // ===== 事件監聽 =====
+  saveKeyBtn.addEventListener('click', saveSettings);
+  sendBtn.addEventListener('click', sendMessage);
+  clearChatBtn.addEventListener('click', clearChat);
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // ===== 初始化 =====
+  loadSettings();
+</script>
